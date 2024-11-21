@@ -1,0 +1,221 @@
+﻿@inject DeviceMeasuringIo DeviceMeasuringIo
+@inject DeviceIo DeviceIo
+@inject MonitorTypeIo MonitorTypeIo
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.DropDowns
+@using System.ComponentModel.DataAnnotations
+@using System.Collections.Concurrent
+@using Action = Syncfusion.Blazor.Grids.Action
+@inject ILogger<DeviceMeasuringConfig> Logger
+
+<SfGrid @ref="Grid" DataSource="@DeviceMeasuringList" Toolbar="@(new List<string>() { "Add", "Edit", "Delete", "Cancel" })"
+        AllowPaging="true" AllowSorting="true" AllowResizing="true">
+    <GridEditSettings Mode="EditMode.Dialog" AllowAdding="@CanAdd" AllowDeleting="true" AllowEditing="true" ShowDeleteConfirmDialog="true">
+        <HeaderTemplate>
+            @if (DeviceId != 0)
+            {
+                <span>@(DeviceIo.DeviceMap[DeviceId].Name)測項</span>
+            }
+        </HeaderTemplate>
+    </GridEditSettings>
+    <GridPageSettings PageSize="5"></GridPageSettings>
+    <GridSelectionSettings EnableToggle="true" Type="SelectionType.Single"></GridSelectionSettings>
+    <GridEvents OnActionComplete="OnActionComplete" TValue="DeviceMeasuringViewModel"></GridEvents>
+    <GridColumns>
+        <GridColumn Field="@nameof(DeviceMeasuringViewModel.Id)"
+                    HeaderText="Id"
+                    TextAlign="TextAlign.Left"
+                    IsPrimaryKey="true"
+                    IsIdentity="true"
+                    AutoFit="true" AllowEditing="false"
+                    Visible="false">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceMeasuringViewModel.Sid)"
+                    HeaderText="測項"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    AutoFit="true">
+            <Template>
+                @{
+                    if (context is DeviceMeasuringViewModel model)
+                    {
+                        <span>
+                            @MonitorTypeIo.PipeMonitorTypeMap[PipeId][model.Sid].Name
+                        </span>
+                    }
+                }
+            </Template>
+            <EditTemplate>
+                <h4>測項</h4>
+                @if (context is DeviceMeasuringViewModel model)
+                {
+                    <SfDropDownList ID="DeviceMeasuringViewModel___Sid" @bind-Value="@(model.Sid)" TItem="IMonitorType" TValue="string" DataSource="@MonitorTypeList">
+                        <DropDownListFieldSettings Value="Sid" Text="Name"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                }
+            </EditTemplate>
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceMeasuringViewModel.InputReg)"
+                    HeaderText="Input 暫存器"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    DisplayAsCheckBox="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceMeasuringViewModel.Address)"
+                    HeaderText="Modbus位址 (以0為基準)"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceMeasuringViewModel.DataType)"
+                    HeaderText="DataType"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    AutoFit="true">
+            <Template>
+                @{
+                    if (context is DeviceMeasuringViewModel model)
+                    {
+                        <span>
+                            @DeviceMeasuringIo.DataTypeNameMap[(DeviceMeasuringIo.ModbusDataType)model.DataType]
+                        </span>
+                    }
+                }
+            </Template>
+            <EditTemplate>
+                <h4>資料型別</h4>
+                @if (context is DeviceMeasuringViewModel model)
+                {
+                    <SfDropDownList ID="DeviceMeasuringViewModel___DataType"
+                                    @bind-Value="@(model.DataType)"
+                                    TItem="DeviceMeasuringIo.DataTypeDef" TValue="int" DataSource="@DeviceMeasuringIo.DataTypeDefList">
+                        <DropDownListFieldSettings Value="TypeInt" Text="Name"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                }
+            </EditTemplate>
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceMeasuringViewModel.MidEndian)"
+                    HeaderText="混合序"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    DisplayAsCheckBox="true"
+                    AutoFit="true">
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+
+    [CascadingParameter] SfToast? ToastObj { get; set; }
+
+    public class DeviceMeasuringViewModel : IDeviceMeasuring
+    {
+        [Required] public int DeviceId { get; set; }
+
+        [Required] public int PipeId { get; set; }
+
+        [Required] public required string Sid { get; set; }
+
+        public bool InputReg { get; set; }
+        public int Address { get; set; }
+        public int DataType { get; set; }
+        public bool MidEndian { get; set; }
+        public string Id => $"{DeviceId}-{PipeId}-{Sid}";
+    }
+
+    [Parameter] public int DeviceId { get; set; }
+
+    [Parameter] public int PipeId { get; set; }
+
+    public SfGrid<DeviceMeasuringViewModel>? Grid;
+
+    private bool CanAdd => DeviceIo.DeviceMap.ContainsKey(DeviceId);
+
+    private List<IMonitorType> MonitorTypeList => MonitorTypeIo.GetMonitorTypes(PipeId);
+    private int _myDeviceId;
+    private int _myPipeId;
+
+    public List<DeviceMeasuringViewModel> DeviceMeasuringList { get; set; } = new();
+
+    private void UpdateDeviceMeasuringList()
+    {
+        var deviceMeasuringList = new List<DeviceMeasuringViewModel>();
+
+        foreach (var deviceMeasuring in DeviceMeasuringIo.GetDeviceMeasuringList(DeviceId))
+        {
+            deviceMeasuringList.Add(new DeviceMeasuringViewModel
+            {
+                DeviceId = deviceMeasuring.DeviceId,
+                PipeId = deviceMeasuring.PipeId,
+                Sid = deviceMeasuring.Sid,
+                InputReg = deviceMeasuring.InputReg,
+                Address = deviceMeasuring.Address,
+                DataType = deviceMeasuring.DataType,
+                MidEndian = deviceMeasuring.MidEndian
+            });
+        }
+
+        DeviceMeasuringList = deviceMeasuringList;
+    }
+
+    protected override void OnParametersSet()
+    {
+        _myDeviceId = DeviceId;
+        _myPipeId = PipeId;
+
+        Logger.LogDebug("_myPipeId={MyPipeId}, _myDeviceId={MyDeviceId}", _myPipeId, _myDeviceId);
+        Logger.LogDebug("deviceMap={DeviceMap}", DeviceIo.DeviceMap);
+        Logger.LogDebug("CanAdd = {CanAdd}", CanAdd);
+        UpdateDeviceMeasuringList();
+    }
+
+    private async void OnActionComplete(ActionEventArgs<DeviceMeasuringViewModel> args)
+    {
+        switch (args.RequestType)
+        {
+            case Action.Add:
+            {
+                var deviceMeasuring = args.Data;
+                {
+                    deviceMeasuring.DeviceId = _myDeviceId;
+                    deviceMeasuring.PipeId = _myPipeId;
+                    deviceMeasuring.InputReg = true;
+                    deviceMeasuring.Address = 0;
+                    deviceMeasuring.DataType = (int)DeviceMeasuringIo.ModbusDataType.Float;
+                    deviceMeasuring.MidEndian = false;
+                }
+                break;
+            }
+            case Action.Save:
+            {
+                await DeviceMeasuringIo.UpsertDeviceMeasuring(args.Data);
+                if (ToastObj != null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel()
+                    {
+                        CssClass = "e-toast-success",
+                        Content = "已儲存"
+                    });
+                }
+
+                break;
+            }
+            case Action.Delete:
+            {
+                await DeviceMeasuringIo.DeleteDeviceMeasuringAsync(args.Data);
+                if (ToastObj != null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel()
+                    {
+                        CssClass = "e-toast-success",
+                        Content = "已刪除"
+                    });
+                }
+
+                break;
+            }
+        }
+    }
+
+}

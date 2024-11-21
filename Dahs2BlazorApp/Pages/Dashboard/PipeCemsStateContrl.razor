@@ -1,0 +1,446 @@
+﻿@inject MonitorTypeIo MonitorTypeIo
+@inject PipeIo PipeIo
+@using Syncfusion.Blazor.Grids
+@using Dahs2BlazorApp.Pages.Config.Site
+@using Syncfusion.Blazor.Buttons
+@using Action = Syncfusion.Blazor.Grids.Action
+@using System.ComponentModel.DataAnnotations
+@using Dahs2BlazorApp.Models
+@using System.Collections.Immutable
+@inject ILogger<MonitorTypeTab> Logger
+@inject DataCollectManager DataCollectManager
+@inject MeasuringAdjust MeasuringAdjust
+@inject DeviceSignalIo DeviceSignalIo
+@using Syncfusion.Blazor.Spinner
+@implements IDisposable
+@inject IAuthorizationService AuthorizationService
+@inject AlarmIo AlarmIo
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
+
+<div class="row match-height g-0">
+    <div class="col-lg-2 col-md-6 col-sm-12">
+        <div class="card border m-2 text-center shadow">
+            <h4 class="card-header text-white bg-primary bg-gradient">DI</h4>
+            <table class="table table-borderless table-hover table-responsive">
+                <thead>
+                <tr>
+                    <th>名稱</th>
+                    <th>狀態</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var ds in InputSignals)
+                {
+                    <tr>
+                        <td>@ds.Name</td>
+                        @if (_pipeSignalMap.TryGetValue(ds.Id, out var value))
+                        {
+                            @if (value)
+                            {
+                                <td>
+                                    <SfIcon IconCss="e-icons e-bullet-2" Title="1"></SfIcon>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>
+                                    <SfIcon IconCss="e-icons e-circle" Title="0"></SfIcon>
+                                </td>
+                            }
+                        }
+                        else
+                        {
+                            <td class="text-danger">
+                                <SfIcon IconCss="e-icons e-link-remove" Title="斷線"></SfIcon>
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-6 col-sm-12">
+        <div class="card border m-2 text-center shadow">
+            <h4 class="card-header text-white bg-primary bg-gradient">DO</h4>
+            <table class="table table-borderless table-hover table-responsive">
+                <thead>
+                <tr>
+                    <th>名稱</th>
+                    <th>狀態</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var ds in OutputSignals)
+                {
+                    <tr>
+                        <td>@ds.Name</td>
+                        @if (_pipeSignalMap.TryGetValue(ds.Id, out var value))
+                        {
+                            @if (value)
+                            {
+                                <td>
+                                    <SfIcon IconCss="e-icons e-bullet-2"></SfIcon>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>
+                                    <SfIcon IconCss="e-icons e-circle"></SfIcon>
+                                </td>
+                            }
+                        }
+                        else
+                        {
+                            <td class="text-danger">
+                                <SfIcon IconCss="e-icons e-link-remove"></SfIcon>
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-6 col-md-6 col-sm-12 ">
+        <div class="card border m-2 text-center shadow">
+            <h4 class="card-header text-white bg-primary bg-gradient">即時值</h4>
+            <table class="table table-borderless table-hover table-responsive">
+                <thead>
+                <tr>
+                    <th>測項</th>
+                    <th>原始值</th>
+                    <th>修正值</th>
+                    <th>狀態</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var mt in MonitorTypeIo.GetCemsMonitorTypes(PipeId))
+                {
+                    var adjustedRecord = GetPipeAdjustedRecord(PipeId, mt.Sid);
+                    <tr>
+                        <td>@mt.Name</td>
+                        <td>@FormatValue(GetPipeRawRecord(PipeId, mt.Sid))</td>
+                        <td>@FormatValue(adjustedRecord)</td>
+                        <td class="@($"ps-1 {GetPipeAdjustedRecord(PipeId, mt.Sid).ToRecordStatus().ToCss()}")">
+                            <strong>@FormatStatus(adjustedRecord)</strong>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-2 col-md-6 col-sm-12 ">
+        <div class="card border m-2 text-center shadow">
+            <h4 class="card-header text-white bg-primary bg-gradient">切換狀態</h4>
+            <SfGrid DataSource="@ActiveMonitorTypes" Toolbar="@(new List<string> { "Edit", "Update", "Cancel" })"
+                    AllowPaging="false" AllowSorting="true" AllowResizing="true">
+                <GridEditSettings Mode="EditMode.Dialog" AllowAdding="false" AllowDeleting="false" AllowEditing="@_canChangeState">
+                    <HeaderTemplate>
+                        @{
+                            if (context is MonitorTypeTab.MonitorTypeViewModel mt)
+                            {
+                                <span>@GetHeader(mt)</span>
+                            }
+                        }
+                    </HeaderTemplate>
+                </GridEditSettings>
+                <GridEvents OnActionComplete="OnActionComplete" TValue="MonitorTypeTab.MonitorTypeViewModel"></GridEvents>
+                <GridColumns>
+                    <GridColumn Field="@nameof(MonitorTypeTab.MonitorTypeViewModel.Sid)"
+                                HeaderText="代碼"
+                                TextAlign="TextAlign.Left"
+                                IsPrimaryKey="true"
+                                AutoFit="true" AllowEditing="false">
+                    </GridColumn>
+                    <GridColumn Field="@nameof(MonitorTypeTab.MonitorTypeViewModel.Name)"
+                                HeaderText="名稱"
+                                TextAlign="TextAlign.Left"
+                                AutoFit="true"
+                                AllowEditing="false">
+                    </GridColumn>
+                    <GridColumn Field="@nameof(MonitorTypeTab.MonitorTypeViewModel.OverrideStateName)"
+                                HeaderText="監測設施狀態"
+                                TextAlign="TextAlign.Center"
+                                AutoFit="true"
+                                AllowEditing="true">
+                        <EditTemplate>
+                            <h4>監測設施手動狀態</h4>
+                            @if (context is MonitorTypeTab.MonitorTypeViewModel mt)
+                            {
+                                <SfDropDownList ID="MonitorType___OverrideState"
+                                                @bind-Value="@mt.OverrideState"
+                                                TItem="MonitorTypeStateModel"
+                                                TValue="string"
+                                                DataSource="@MonitorTypeState.OverrideStates">
+                                    <DropDownListFieldSettings Value="Code" Text="Name"></DropDownListFieldSettings>
+                                </SfDropDownList>
+                            }
+                        </EditTemplate>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+</div>
+
+<style>
+    .match-height {
+      > [class*='col'] {
+        display: flex;
+        flex-flow: column;
+    
+        > .card {
+          flex: 1 1 auto;
+        }
+      }
+    }
+</style>
+
+@code {
+
+    [Parameter] public int PipeId { get; set; } = 1;
+
+    [CascadingParameter] SfToast? ToastObj { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    string Title => $"{PipeIo.PipeMap[PipeId].Name}狀態設定";
+
+    bool _canChangeState = false;
+
+    List<MonitorTypeTab.MonitorTypeViewModel> ActiveMonitorTypes { get; set; } = new();
+
+    ImmutableList<DeviceSignalIo.IDeviceSignal> DeviceSignals { get; set; }
+        = ImmutableList<DeviceSignalIo.IDeviceSignal>.Empty;
+
+    ImmutableList<DeviceSignalIo.IDeviceSignal> InputSignals =>
+        DeviceSignals.Where(ds => !ds.Coil).ToImmutableList();
+
+    ImmutableList<DeviceSignalIo.IDeviceSignal> OutputSignals =>
+        DeviceSignals.Where(ds => ds.Coil).ToImmutableList();
+
+    private Timer? _timer;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        UpdateActiveMonitorTypes();
+        DeviceSignals = DeviceSignalIo.GetDeviceSignalListByPipeId(PipeId).OrderBy(signal => signal.Id).ToImmutableList();
+        _pipeSignalMap = DataCollectManager.GetCurrentPipeSignalMap(PipeId);
+        if (AuthenticationState is not null)
+        {
+            var authState = await AuthenticationState;
+            var user = authState.User;
+
+            if (user.IsInRole(Role.Admin))
+            {
+                _canChangeState = true;
+            }
+        }
+    }
+
+    Dictionary<string, Record> _pipeRawRecordMap = new();
+    Dictionary<string, Record> _pipeAdjustedRecordMap = new();
+    Dictionary<string, Record> _pipeAdjustWaterOnlyRecordMap = new();
+    Dictionary<int, bool> _pipeSignalMap = new();
+    string CurrentLoad => PipeIo.PipeMap[PipeId].CurrentLoad?.ToString() ?? "-";
+
+    string ConvertedLoad
+    {
+        get
+        {
+            var currentLoad = PipeIo.PipeMap[PipeId].CurrentLoad;
+            return currentLoad is not null ? $"{DataCollectManager.GetConvertedLoad(currentLoad.Value):F2}" : "-";
+        }
+    }
+
+    private void UpdateContext()
+    {
+        _pipeRawRecordMap =
+            DataCollectManager.GetCurrentRawRecordMap(PipeId);
+
+        List<string> monitorTypeWithoutOp = MonitorTypeIo.GetCemsMonitorTypeSids(PipeId)
+            .Where(sid => sid != MonitorTypeCode.G11.ToString())
+            .ToList();
+
+        var copyOfRawRecordMap = new Dictionary<string, Record>();
+
+        foreach (var (key, value) in _pipeRawRecordMap)
+        {
+            copyOfRawRecordMap[key] = new Record
+            {
+                Value = value.Value,
+                Status = value.Status,
+                Baf = value.Baf
+            };
+        }
+
+        var createDate = DateTime.Now;
+        var rawTimeDataMap = new Dictionary<DateTime, Dictionary<string, Record>>
+        {
+            { createDate, copyOfRawRecordMap }
+        };
+        var adjustedMap =
+            MeasuringAdjust.Get1MinAdjustedData(PipeId,
+                createDate, monitorTypeWithoutOp, rawTimeDataMap, false);
+
+        var copyOfRawRecordMap2 = new Dictionary<string, Record>();
+
+        foreach (var (key, value) in _pipeRawRecordMap)
+        {
+            copyOfRawRecordMap2[key] = new Record
+            {
+                Value = value.Value,
+                Status = value.Status,
+                Baf = value.Baf
+            };
+        }
+
+        var rawTimeDataMap2 = new Dictionary<DateTime, Dictionary<string, Record>>
+        {
+            { createDate, copyOfRawRecordMap2 }
+        };
+
+        var adjustedMap2 =
+            MeasuringAdjust.Get1MinAdjustedDataFixWaterOnly(PipeId,
+                createDate, monitorTypeWithoutOp, rawTimeDataMap2, false);
+
+        if (MonitorTypeIo.GetCemsMonitorTypeSids(PipeId).Exists(sid => sid == MonitorTypeCode.G11.ToString()))
+        {
+            adjustedMap["G11"] =
+                MeasuringAdjust.GetAdjustRawOpRecord(PipeId, _pipeRawRecordMap["G11"]);
+
+            adjustedMap2["G11"] =
+                MeasuringAdjust.GetAdjustRawOpRecord(PipeId, _pipeRawRecordMap["G11"]);
+        }
+        
+        _pipeAdjustedRecordMap = adjustedMap;
+
+        _pipeAdjustWaterOnlyRecordMap = adjustedMap2;
+
+        _pipeSignalMap = DataCollectManager.GetCurrentPipeSignalMap(PipeId);
+        
+        
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _timer = new Timer(_ =>
+            {
+                UpdateContext();
+                InvokeAsync(StateHasChanged);
+            }, new AutoResetEvent(false), 0, 10000); // fire every 2000 milliseconds
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
+
+    private string GetHeader(MonitorTypeTab.MonitorTypeViewModel monitorTypeViewModel)
+    {
+        return $"切換{monitorTypeViewModel.Name}狀態";
+    }
+
+    private void UpdateActiveMonitorTypes()
+    {
+        try
+        {
+            if (!MonitorTypeIo.PipeMonitorTypeMap.TryGetValue(PipeId, out var mtMap)) return;
+            List<MonitorTypeTab.MonitorTypeViewModel> data = new();
+
+            data.AddRange(MonitorTypeIo.GetCemsMonitorTypes(PipeId).Select(mt => new MonitorTypeTab.MonitorTypeViewModel
+            {
+                PipeId = PipeId,
+                Sid = mt.Sid,
+                Name = mt.Name,
+                Unit = mt.Unit,
+                Unit2 = mt.Unit2,
+                Upload = mt.Upload,
+                Standard = mt.Standard,
+                Standard4Stop = mt.Standard4Stop,
+                Alarm = mt.Alarm,
+                Warning = mt.Warning,
+                AlarmLow = mt.AlarmLow,
+                WarningLow = mt.WarningLow,
+                EmissionFactor = mt.EmissionFactor,
+                ControlEfficiency = mt.ControlEfficiency,
+                OverrideState = mt.OverrideState,
+                SrcState = mt.SrcState,
+                Order = mt.Order
+            }));
+
+            ActiveMonitorTypes = data;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed");
+        }
+    }
+
+    private async void OnActionComplete(ActionEventArgs<MonitorTypeTab.MonitorTypeViewModel> args)
+    {
+        if (args.RequestType != Action.Save) return;
+
+        Logger.LogInformation("Update MonitorType: {PipeId} {Sid} {@MonitorType}", args.Data.PipeId, args.Data.Sid, args.Data);
+        var authenticationState = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+        _ = AlarmIo.AddAlarm(AlarmIo.AlarmLevel.Info, $"使用者{authenticationState.User.Identity?.Name}> {PipeIo.PipeMap[PipeId].Name} {args.Data.Sid} 切換監測設施手動狀態=> {args.Data.SrcStateName}");
+        await MonitorTypeIo.UpsertMonitorType(args.Data);
+        if (ToastObj != null)
+            await ToastObj.ShowAsync(new ToastModel
+            {
+                CssClass = "e-toast-success",
+                Content = "更新成功"
+            });
+    }
+
+    Record? GetPipeRawRecord(int pipeId, string mt)
+    {
+        return _pipeRawRecordMap.TryGetValue(mt, out var record) ? record : null;
+    }
+
+    Record? GetPipeAdjustedRecord(int pipeId, string mt)
+    {
+        return _pipeAdjustedRecordMap.TryGetValue(mt, out var record) ? record : null;
+    }
+
+    Record? GetPipeAdjustedWaterOnlyRecord(int pipeId, string mt)
+    {
+        return _pipeAdjustWaterOnlyRecordMap.TryGetValue(mt, out var record) ? record : null;
+    }
+
+    string FormatValue(Record? record)
+    {
+        if (record is null)
+            return "-";
+
+        return record.Value.HasValue ? $"{record.Value:F2}" : "-";
+    }
+
+    string FormatStatus(Record? record)
+    {
+        if (record is null)
+            return "-";
+
+        return MonitorTypeState.StateNameMap.TryGetValue(record.Status, out var stateName) ? stateName : record.Status;
+    }
+
+    string FormatInvalidReason(int pipeId, string mt, Record? record)
+    {
+        if (record is null)
+            return "-";
+
+        var invalidReason = DataCollectManager.GetPipeMonitorTypeInvalidReason(pipeId, mt);
+        return invalidReason is null ? "" :
+            invalidReason.Code == record.Status ? invalidReason.Reason : "";
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+
+}

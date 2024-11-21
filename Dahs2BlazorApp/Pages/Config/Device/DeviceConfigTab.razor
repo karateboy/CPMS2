@@ -1,0 +1,278 @@
+﻿<PageTitle>@_title</PageTitle>
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.DropDowns
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.Blazor.Lists
+@using Syncfusion.Blazor.Navigations
+@using TextAlign = Syncfusion.Blazor.Grids.TextAlign
+@inject DeviceIo DeviceIo
+@inject DeviceMeasuringIo DeviceMeasuringIo
+@inject DeviceSignalIo DeviceSignalIo
+@inject PipeIo PipeIo
+@inject ILogger<DeviceConfigTab> Logger
+@inject AlarmIo AlarmIo
+
+<h3>1. 設備通訊</h3>
+<PipeSelector PipeId="PipeId" PipeIdChanged="OnPipeIdChange"></PipeSelector>
+<br/>
+@if (SelectedDeviceId == 0)
+{
+    <SfMessage Severity="MessageSeverity.Info" Variant="MessageVariant.Filled">請新增或點選設備</SfMessage>
+}
+<SfGrid @ref="Grid" DataSource="@Devices" Toolbar="@(new List<string> { "Add", "Edit", "Delete", "Cancel", "ExcelExport" })"
+        AllowPaging="true" AllowSorting="true" AllowResizing="true" AllowExcelExport="true">
+    <GridEditSettings Mode="EditMode.Dialog" AllowAdding="true" AllowDeleting="true" AllowEditing="true"
+                      ShowDeleteConfirmDialog="true" NewRowPosition="NewRowPosition.Bottom">
+        <HeaderTemplate>
+            @{
+                if (context is DeviceViewModel model)
+                {
+                    <span>@(model.Name)</span>
+                }
+            }
+        </HeaderTemplate>
+    </GridEditSettings>
+    <GridPageSettings PageSize="5"></GridPageSettings>
+    <GridSortSettings>
+        <GridSortColumns>
+            <GridSortColumn Field="@nameof(DeviceViewModel.Id)" Direction="SortDirection.Ascending"></GridSortColumn>
+        </GridSortColumns>
+    </GridSortSettings>
+    <GridSelectionSettings EnableToggle="true" Type="SelectionType.Single"></GridSelectionSettings>
+    <GridEvents OnActionComplete="OnActionComplete" TValue="DeviceViewModel" RowSelected="OnSelectedRecords" OnToolbarClick="ToolbarClickHandler"></GridEvents>
+    <GridColumns>
+        <GridColumn Field="@nameof(DeviceViewModel.Id)"
+                    HeaderText="Id"
+                    TextAlign="TextAlign.Left"
+                    IsPrimaryKey="true"
+                    IsIdentity="true"
+                    AutoFit="true" AllowEditing="false"
+                    Visible="true">
+            <EditTemplate></EditTemplate>
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceViewModel.Name)"
+                    HeaderText="名稱"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceViewModel.ModbusAddress)"
+                    HeaderText="Modbus位址"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceViewModel.Port)"
+                    HeaderText="Modbus Port"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceViewModel.SlaveId)"
+                    HeaderText="Slave ID"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceViewModel.Spare)"
+                    HeaderText="備用設備"
+                    TextAlign="TextAlign.Center"
+                    DisplayAsCheckBox="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceViewModel.Authenticated)"
+                    HeaderText="經主管機關認可"
+                    TextAlign="TextAlign.Center"
+                    DisplayAsCheckBox="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceViewModel.BigEndian)"
+                    HeaderText="Big Endian"
+                    TextAlign="TextAlign.Center"
+                    DisplayAsCheckBox="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceViewModel.Output)"
+                    HeaderText="輸出設備"
+                    TextAlign="TextAlign.Center"
+                    DisplayAsCheckBox="true"
+                    AutoFit="true">
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+<br/>
+<div class="row">
+    <div class="col-lg-6 col-sm-12">
+        @if (SelectedDeviceId != 0)
+        {
+            <h3>2. (@DeviceIo.DeviceMap[SelectedDeviceId].Name)測值設定</h3>
+            <DeviceMeasuringConfig DeviceId="SelectedDeviceId" PipeId="@PipeId"></DeviceMeasuringConfig>
+        }
+    </div>
+    <div class="col-lg-6 col-sm-12">
+        @if (SelectedDeviceId != 0)
+        {
+            <h3>3. (@DeviceIo.DeviceMap[SelectedDeviceId].Name)IO設定</h3>
+            <DeviceSignalConfig DeviceId="SelectedDeviceId" PipeId="@PipeId"></DeviceSignalConfig>
+        }
+    </div>
+    <div class="col-lg-6 col-sm-12">
+        @if (SelectedDeviceId != 0 && DeviceIo.DeviceMap[SelectedDeviceId].Output)
+        {
+            <h3>4. (@DeviceIo.DeviceMap[SelectedDeviceId].Name) 輸出設定</h3>
+            <DeviceOutputConfig DeviceId="SelectedDeviceId" ></DeviceOutputConfig>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly string _title = "設備設定";
+    public int PipeId { get; set; }
+    public List<DeviceViewModel> Devices = new();
+
+    [CascadingParameter]
+    SfToast? ToastObj { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        PipeId = PipeIo.Pipes.First().Id;
+        await UpdateDevices();
+    }
+
+    SfGrid<DeviceViewModel>? Grid;
+
+
+    public class DeviceViewModel : IDevice
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public required string Name { get; set; }
+
+        public int PipeId { get; set; }
+
+        [Required]
+        public required string ModbusAddress { get; set; }
+
+        public int Port { get; set; }
+        public int SlaveId { get; set; }
+        public bool Spare { get; set; }
+        public bool Authenticated { get; set; }
+        public bool BigEndian { get; set; }
+        public bool Output { get; set; }
+    }
+
+    private async Task UpdateDevices()
+    {
+        var deviceList = new List<DeviceViewModel>();
+        foreach (var device in DeviceIo.GetDevicesByPipeId(PipeId))
+        {
+            deviceList.Add(new DeviceViewModel
+            {
+                Id = device.Id,
+                Name = device.Name,
+                PipeId = device.PipeId,
+                ModbusAddress = device.ModbusAddress,
+                Port = device.Port,
+                SlaveId = device.SlaveId,
+                Spare = device.Spare,
+                Authenticated = device.Authenticated,
+                BigEndian = device.BigEndian,
+                Output = device.Output
+            });
+        }
+        Devices = deviceList;
+        if (deviceList.Count > 0)
+        {
+            if (Grid is not null)
+            {
+                await Grid.SelectRowAsync(0);
+            }
+
+            SelectedDeviceId = deviceList[0].Id;
+        }
+    }
+
+    private void OnPipeIdChange(int pipeId)
+    {
+        PipeId = pipeId;
+        SelectedDeviceId = 0;
+        _ = UpdateDevices();
+    }
+
+    int SelectedDeviceId { get; set; } = 0;
+
+    private void OnSelectedRecords(RowSelectEventArgs<DeviceViewModel> args)
+    {
+        if (args.Data.Id != 0)
+            SelectedDeviceId = args.Data.Id;
+
+        Logger.LogDebug("SelectedDeviceId = {SelectedDeviceId}", SelectedDeviceId);
+    }
+
+    private async void OnActionComplete(ActionEventArgs<DeviceViewModel> args)
+    {
+        switch (args.RequestType)
+        {
+            case Syncfusion.Blazor.Grids.Action.Add:
+            {
+                args.Data.PipeId = PipeId;
+                args.Data.Name = $"新設備{Devices.Count + 1}";
+                args.Data.ModbusAddress = "127.0.0.1";
+                args.Data.Port = 502;
+                args.Data.SlaveId = 1;
+                args.Data.Spare = false;
+                args.Data.Authenticated = true;
+                args.Data.BigEndian = true;
+                break;
+            }
+            case Syncfusion.Blazor.Grids.Action.Save:
+            {
+                bool isNewDevice = args.Data.Id == 0;
+                _ = AlarmIo.AddAlarm(AlarmIo.AlarmLevel.Info, isNewDevice ? $"新增校正裝置 {args.Data.Name}" : $"修改校正裝置 {args.Data.Name}設備設定");
+                int id = await DeviceIo.UpsertDevice(args.Data);
+                if (isNewDevice)
+                {
+                    SelectedDeviceId = id;
+                    await Grid?.SelectRowAsync(0)!;
+                }
+
+                _ = Grid?.Refresh();
+                if (ToastObj != null)
+                    await ToastObj.ShowAsync(new ToastModel()
+                    {
+                        CssClass = "e-toast-success",
+                        Content = "設備設定已儲存"
+                    });
+
+
+                break;
+            }
+
+            case Syncfusion.Blazor.Grids.Action.Delete:
+            {
+                SelectedDeviceId = 0;
+                await DeviceMeasuringIo.DeleteDeviceMeasuringByDeviceIdAsync(args.Data.Id);
+                await DeviceSignalIo.DeleteDeviceSignalByDeviceIdAsync(args.Data.Id);
+                await DeviceIo.DeleteDevice(args.Data.Id);
+                var deviceList = DeviceIo.GetDevicesByPipeId(PipeId);
+                SelectedDeviceId = deviceList.Count != 0 ? deviceList[0].Id : 0;
+                if (ToastObj != null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel
+                    {
+                        CssClass = "e-toast-success",
+                        Content = "設備設定已刪除"
+                    });
+                }
+                break;
+            }
+        }
+    }
+
+    private async void ToolbarClickHandler(ClickEventArgs args)
+    {
+        if (args.Item.Id.EndsWith("excelexport"))
+        {
+            await Grid?.ExportToExcelAsync()!;
+        }
+    }
+
+}

@@ -1,0 +1,196 @@
+﻿@inject DeviceOutputIo DeviceOutputIo
+@inject DeviceMeasuringIo DeviceMeasuringIo
+@inject DeviceIo DeviceIo
+@inject MonitorTypeIo MonitorTypeIo
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.DropDowns
+@using System.ComponentModel.DataAnnotations
+@using System.Collections.Concurrent
+@using Action = Syncfusion.Blazor.Grids.Action
+@inject ILogger<DeviceOutputConfig> Logger
+
+<SfGrid @ref="Grid" DataSource="@_deviceOutputList" Toolbar="@(new List<string> { "Add", "Edit", "Delete", "Cancel" })"
+        AllowPaging="true" AllowSorting="true" AllowResizing="true">
+    <GridEditSettings Mode="EditMode.Dialog" AllowAdding="@CanAdd" AllowDeleting="true" AllowEditing="true" ShowDeleteConfirmDialog="true">
+        <HeaderTemplate>
+            @if (DeviceId != 0)
+            {
+                <span>@(DeviceIo.DeviceMap[DeviceId].Name)</span>
+            }
+        </HeaderTemplate>
+    </GridEditSettings>
+    <GridPageSettings PageSize="5"></GridPageSettings>
+    <GridSelectionSettings EnableToggle="true" Type="SelectionType.Single"></GridSelectionSettings>
+    <GridEvents OnActionBegin="OnActionBegin" TValue="DeviceOutputModel"></GridEvents>
+    <GridColumns>
+        <GridColumn Field="@nameof(DeviceOutputModel.Id)"
+                    HeaderText="Id"
+                    TextAlign="TextAlign.Left"
+                    IsPrimaryKey="true"
+                    IsIdentity="true"
+                    AutoFit="true" AllowEditing="false"
+                    Visible="false">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceOutputModel.Address)"
+                    HeaderText="Modbus位址 (以0為基準)"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceOutputModel.DataType)"
+                    HeaderText="DataType"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    AutoFit="true">
+            <Template>
+                @{
+                    if (context is DeviceOutputModel model)
+                    {
+                        <span>
+                            @DeviceMeasuringIo.DataTypeNameMap[(DeviceMeasuringIo.ModbusDataType)model.DataType]
+                        </span>
+                    }
+                }
+            </Template>
+            <EditTemplate>
+                <h4>資料型別</h4>
+                @if (context is DeviceOutputModel model)
+                {
+                    <SfDropDownList ID="DeviceOutput___DataType"
+                                    @bind-Value="@(model.DataType)"
+                                    TItem="DeviceMeasuringIo.DataTypeDef" TValue="int" DataSource="@DeviceMeasuringIo.DataTypeDefList">
+                        <DropDownListFieldSettings Value="TypeInt" Text="Name"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                }
+            </EditTemplate>
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceOutput.OutputConfigId)"
+                    HeaderText="輸出設定"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    AutoFit="true">
+            <Template>
+                @{
+                    if (context is DeviceOutputModel model)
+                    {
+                        <span>
+                            @SiteConfig.GetDeviceOutputDescription(model.OutputConfigId)
+                        </span>
+                    }
+                }
+            </Template>
+            <EditTemplate>
+                <h4>輸出設定</h4>
+                @if (context is DeviceOutputModel model)
+                {
+                    <SfDropDownList ID="DeviceOutput___OutputConfigId"
+                                    @bind-Value="@(model.OutputConfigId)"
+                                    TItem="SiteConfig.DeviceOutputConfig" TValue="int" DataSource="@SiteConfig.DeviceOutputConfigs">
+                        <DropDownListFieldSettings Value="Id" Text="Description"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                }
+            </EditTemplate>
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+
+    [CascadingParameter] SfToast? ToastObj { get; set; }
+
+    [Parameter] public int DeviceId { get; set; }
+
+    [Parameter] public int PipeId { get; set; }
+
+    SfGrid<DeviceOutputModel>? Grid;
+
+    private bool CanAdd => DeviceIo.DeviceMap.ContainsKey(DeviceId) && _deviceOutputList.Count < SiteConfig.DeviceOutputConfigs.Count;
+
+    private List<IMonitorType> MonitorTypeList => MonitorTypeIo.GetMonitorTypes(PipeId);
+    private int _myDeviceId;
+
+    class DeviceOutputModel : IDeviceOutput
+    {
+        [Required] public int DeviceId { get; set; }
+        public int Address { get; set; }
+        public int DataType { get; set; }
+
+        [Required] [Range(1, int.MaxValue)] public int OutputConfigId { get; set; }
+
+        public string Id => $"{DeviceId}-{OutputConfigId}";
+    }
+
+    private List<DeviceOutputModel> _deviceOutputList = new();
+    
+    private void UpdateDeviceOutputList()
+    {
+        if (DeviceOutputIo.DeviceOutputMap.TryGetValue(DeviceId, out var deviceOutputList))
+        {
+            _deviceOutputList = deviceOutputList.Select(output =>
+                new DeviceOutputModel
+                {
+                    Address = output.Address,
+                    DataType = output.DataType,
+                    DeviceId = output.DeviceId,
+                    OutputConfigId = output.OutputConfigId
+                }).ToList();
+        }
+        else
+        {
+            _deviceOutputList = new List<DeviceOutputModel>();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        _myDeviceId = DeviceId;
+
+        UpdateDeviceOutputList();
+    }
+
+    private async void OnActionBegin(ActionEventArgs<DeviceOutputModel> args)
+    {
+        switch (args.RequestType)
+        {
+            case Action.Add:
+            {
+                var deviceOutput = args.Data;
+                {
+                    deviceOutput.DeviceId = _myDeviceId;
+                    deviceOutput.Address = 0;
+                    deviceOutput.DataType = (int)DeviceMeasuringIo.ModbusDataType.Float;
+                }
+                break;
+            }
+            case Action.Save:
+            {
+                await DeviceOutputIo.UpsertDeviceOutput(args.Data);
+                if (ToastObj != null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel
+                    {
+                        CssClass = "e-toast-success",
+                        Content = "已儲存"
+                    });
+                }
+
+                break;
+            }
+            case Action.Delete:
+            {
+                await DeviceOutputIo.DeleteDeviceOutput(args.Data);
+                if (ToastObj != null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel
+                    {
+                        CssClass = "e-toast-success",
+                        Content = "已刪除"
+                    });
+                }
+
+                break;
+            }
+        }
+    }
+
+}

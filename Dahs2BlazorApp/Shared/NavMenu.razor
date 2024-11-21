@@ -1,0 +1,118 @@
+﻿@using Syncfusion.Blazor.Navigations
+<div>
+    <LoginDisplay></LoginDisplay>
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> <span class="displayText">儀表板</span>
+            </NavLink>
+        </li>
+        <AuthorizeView Roles="Admin, Operator">
+            <Authorized>
+                <li class="nav-item text-white px-1">
+                    <h4>系統管理</h4>
+                </li>
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="/Config/Site">
+                        <span class="syncfusion-blazor-icons syncfusion-blazor-icon-maps" aria-hidden="true"></span><span class="displayText">參數設定</span>
+                    </NavLink>
+                </li>
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="/Config/Device">
+                        <span class="syncfusion-blazor-icons syncfusion-blazor-icon-lineargauge" aria-hidden="true"></span><span class="displayText">設備管理</span>
+                    </NavLink>
+                </li>
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="/Config/Upload">
+                        <span class="syncfusion-blazor-icons syncfusion-blazor-icon-fileupload" aria-hidden="true"></span><span class="displayText">上傳管理</span>
+                    </NavLink>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <li class="nav-item text-white px-1">
+            <h4>報表查詢</h4>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="/query/data">
+                <span class="syncfusion-blazor-icons syncfusion-blazor-icon-spreadsheet" aria-hidden="true"></span><span class="displayText">測值查詢</span>
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="/query/alarm">
+                <span class="syncfusion-blazor-icons syncfusion-blazor-icon-spreadsheet" aria-hidden="true"></span><span class="displayText">警報查詢</span>
+            </NavLink>
+        </li>
+        @*<h5 class="text-white px-1">緊急事件</h5>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="kanban-features">
+                <span class="syncfusion-blazor-icons syncfusion-blazor-icon-heatmapchart" aria-hidden="true"></span><span class="displayText">待處理事件!</span>
+            </NavLink>
+        </li>*@
+    </ul>
+
+</div>
+
+@code {
+
+    /*
+    public class MenuTreeItem
+    {
+        public string NodeId { get; set; }
+        public string NodeText { get; set; }
+        public string Icon { get; set; }
+        public bool Expanded { get; set; }
+        public bool Selected { get; set; }
+        public string Url { get; set; }
+        public List<MenuTreeItem> Children { get; set; } = new List<MenuTreeItem>();
+    }*/
+
+    public ExpandAction Expand = ExpandAction.Click;
+    //public List<MenuTreeItem> MenuTreeItems = new();
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+    /*
+        MenuTreeItems.Add(new MenuTreeItem() { NodeId = "1", NodeText = "儀表板", Icon = "oi oi-home", Expanded = false, Selected = true, Url = "" });
+        var configMenu = new MenuTreeItem() { NodeId = "2", NodeText = "系統設定", Icon = "oi oi-home", Expanded = false, Selected = false, Url = "" };
+        configMenu.Children.Add(new MenuTreeItem() { NodeId = "2-1", NodeText = "煙道參數設定", Icon = "oi oi-home", Expanded = false, Selected = false, Url = "pipe-config" });
+        configMenu.Children.Add(new MenuTreeItem() { NodeId = "2-2", NodeText = "測項參數設定", Icon = "oi oi-home", Expanded = false, Selected = false, Url = "monitor-type-config" });
+        MenuTreeItems.Add(configMenu);
+        */
+    }
+
+}
+
+<style>
+    .scroller {
+        height: calc(100vh - 160px) !important;
+        overflow-y: auto;
+        width: 287px;
+    }
+
+        .scroller::-webkit-scrollbar, scrollbar-thumb
+        .scroller::-webkit-scrollbar-thumb {
+            width: 8px;
+            height: 110px;
+            border-radius: 4px;
+            position: center;
+        }
+
+        .scroller::-webkit-scrollbar-thumb {
+            box-shadow: inset 0 0 0 10px #313C75;
+            border-radius: 4px;
+        }
+
+        .scroller::-webkit-scrollbar-track {
+            width: 28px;
+        }
+
+    .separator {
+        border: 1px solid #FFFFFF;
+        opacity: 0.14;
+        width: 247px;
+        margin: 0 1rem 1rem;
+    }
+</style>

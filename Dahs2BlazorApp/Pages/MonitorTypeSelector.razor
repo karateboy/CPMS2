@@ -1,0 +1,43 @@
+﻿@inject MonitorTypeIo MonitorTypeIo
+@using Syncfusion.Blazor.DropDowns
+<form>
+    <div class="form-group">
+        <label for="MonitorTypes">測項:</label>
+        <SfDropDownList ID="MonitorTypes" TValue="string" TItem="IMonitorType" @bind-value="@MySid" DataSource="@MonitorTypes" Width="300px">
+            <DropDownListFieldSettings Value="Id" Text="Name"></DropDownListFieldSettings>
+            <DropDownListEvents TValue="string" TItem="IMonitorType" ValueChange="OnSelectionChanged"></DropDownListEvents>
+        </SfDropDownList>
+    </div>
+</form>
+@code {
+
+    [Parameter]
+    public int PipeId { get; set; }
+
+    [Parameter]
+    public required string Sid { get; set; }
+
+    [Parameter]
+    public EventCallback<string> MonitorTypeChanged { get; set; }
+
+    public string? MySid;
+
+    public List<IMonitorType> MonitorTypes = new();
+
+    private void OnSelectionChanged(ChangeEventArgs<string, IMonitorType> args)
+    {
+        MySid = args.Value;
+        MonitorTypeChanged.InvokeAsync(MySid);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        MonitorTypes = MonitorTypeIo.GetMonitorTypes(PipeId);
+        MySid = !string.IsNullOrEmpty(Sid) ? Sid : MonitorTypes.First().Sid;
+    }
+}

@@ -1,0 +1,17 @@
+﻿@page
+@using Dahs2BlazorApp.Db
+@attribute [IgnoreAntiforgeryToken]
+@inject SignInManager<IdentityUser> SignInManager
+@inject AlarmIo AlarmIo
+@functions {
+    public async Task<IActionResult> OnPost()
+    {
+        if (SignInManager.IsSignedIn(User))
+        {
+            _ = AlarmIo.AddAlarm(AlarmIo.AlarmLevel.Info, $"使用者{User.Identity?.Name} 登出");
+            await SignInManager.SignOutAsync();
+        }
+
+        return Redirect("~/");
+    }
+}

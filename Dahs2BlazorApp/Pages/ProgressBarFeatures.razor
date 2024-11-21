@@ -1,0 +1,41 @@
+﻿@page "/progressbar-features"
+@using Syncfusion.Blazor.ProgressBar
+<PageTitle>ProgressBar</PageTitle>
+<h2>ProgressBar</h2>
+<br/>
+<div id="ControlRegion">
+<SfProgressBar Theme="Theme.Fluent" Type="ProgressType.Circular" Value="30" Height="200px" TrackThickness="10" ProgressThickness="10" Minimum="0" Maximum="100">
+        <ProgressBarAnimation Enable="true" Duration="2000" Delay="0"></ProgressBarAnimation>
+        <ProgressBarAnnotations>
+            <ProgressBarAnnotation>
+			    <ContentTemplate><div id='point1' style='font-size:35px;font-weight:bold;color:#ff8c45;'><span>30%</span></div></ContentTemplate>
+			</ProgressBarAnnotation>
+        </ProgressBarAnnotations>
+    </SfProgressBar> 
+</div>
+<br/>
+<div>
+  <h3>Selected Features:</h3>
+    <ul class="ulstyle">
+      <li class="list"> Container Type - Circular</li>
+      <li class="list"> Theme - Fluent</li>
+    </ul>
+</div>
+<br/>
+<style>
+    #ControlRegion{
+            margin:0 auto;
+            width:400px;
+    }
+    .ulstyle {
+        margin: 0px;
+        padding-left: 20px;
+        display: inline-block;
+    }
+    .list {
+    float: left;
+    line-height: 20px;
+    margin: 10px;
+    min-width: 200px;
+    }
+</style>

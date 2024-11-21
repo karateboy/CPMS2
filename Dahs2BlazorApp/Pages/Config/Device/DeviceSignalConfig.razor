@@ -1,0 +1,180 @@
+﻿@inject DeviceSignalIo DeviceSignalIo
+@inject DeviceIo DeviceIo
+@inject MonitorTypeIo MonitorTypeIo
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.DropDowns
+@using System.ComponentModel.DataAnnotations
+@using System.Collections.Concurrent
+@using Action = Syncfusion.Blazor.Grids.Action
+
+<SfGrid @ref="Grid" DataSource="@DeviceSignalList" Toolbar="@(new List<string> { "Add", "Edit", "Delete", "Cancel" })"
+        AllowPaging="true" AllowSorting="true" AllowResizing="true">
+    <GridSortSettings>
+        <GridSortColumns>
+            <GridSortColumn Field="@nameof(DeviceSignalViewModel.Address)" Direction="SortDirection.Ascending"></GridSortColumn>
+        </GridSortColumns>
+    </GridSortSettings>
+    <GridEditSettings Mode="EditMode.Dialog" AllowAdding="CanAdd" AllowDeleting="true" AllowEditing="true" ShowDeleteConfirmDialog="true">
+        <HeaderTemplate>
+            @{
+                if (context is DeviceSignalViewModel model)
+                {
+                    <span>@(model.Name)測項</span>
+                }
+            }
+        </HeaderTemplate>
+    </GridEditSettings>
+    <GridPageSettings PageSize="5"></GridPageSettings>
+    <GridSelectionSettings EnableToggle="true" Type="SelectionType.Single"></GridSelectionSettings>
+    <GridEvents OnActionComplete="OnActionComplete" TValue="DeviceSignalViewModel"></GridEvents>
+    <GridColumns>
+        <GridColumn Field="@nameof(DeviceSignalViewModel.Id)"
+                    HeaderText="Id"
+                    TextAlign="TextAlign.Left"
+                    IsPrimaryKey="true"
+                    IsIdentity="true"
+                    AutoFit="true" AllowEditing="false"
+                    Visible="false">
+            <EditTemplate></EditTemplate>
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceSignalViewModel.Name)"
+                    HeaderText="名稱"
+                    TextAlign="TextAlign.Left"
+                    AllowEditing="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceSignalViewModel.Address)"
+                    HeaderText="Modbus 位址 (以0為基準)"
+                    TextAlign="TextAlign.Right"
+                    AllowEditing="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceSignalViewModel.Offset)"
+                    HeaderText="偏移量"
+                    TextAlign="TextAlign.Right"
+                    AllowEditing="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(DeviceSignalViewModel.Coil)"
+                    HeaderText="Digital Output (Coil)"
+                    TextAlign="TextAlign.Center"
+                    DisplayAsCheckBox="true"
+                    AllowEditing="true"
+                    AutoFit="true">
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+
+    [CascadingParameter]
+    SfToast? ToastObj { get; set; }
+
+    public class DeviceSignalViewModel : DeviceSignalIo.IDeviceSignal
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public int DeviceId { get; set; }
+
+        public required string? Name { get; set; }
+
+        [Required]
+        public int PipeId { get; set; }
+
+        public bool Coil { get; set; }
+        public int Address { get; set; }
+        public int Offset { get; set; }
+    }
+
+    [Parameter]
+    public int DeviceId { get; set; }
+
+    [Parameter]
+    public int PipeId { get; set; }
+
+    public SfGrid<DeviceSignalViewModel>? Grid;
+
+    public bool CanAdd => DeviceIo.DeviceMap.ContainsKey(DeviceId);
+
+    private int _myDeviceId;
+    private int _myPipeId;
+
+    public List<DeviceSignalViewModel> DeviceSignalList { get; set; } = new();
+
+    private void UpdateDeviceSignalList()
+    {
+        var deviceSignalList = new List<DeviceSignalViewModel>();
+
+        foreach (var signal in DeviceSignalIo.GetDeviceSignalListByDeviceId(DeviceId))
+        {
+            deviceSignalList.Add(new DeviceSignalViewModel
+            {
+                Id = signal.Id,
+                DeviceId = signal.DeviceId,
+                PipeId = signal.PipeId,
+                Coil = signal.Coil,
+                Address = signal.Address,
+                Name = signal.Name
+            });
+        }
+        DeviceSignalList = deviceSignalList;
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        _myDeviceId = DeviceId;
+        _myPipeId = PipeId;
+        UpdateDeviceSignalList();
+    }
+
+    private async void OnActionComplete(ActionEventArgs<DeviceSignalViewModel> args)
+    {
+        switch (args.RequestType)
+        {
+            case Action.Add:
+            {
+                var deviceMeasuring = args.Data;
+                {
+                    deviceMeasuring.DeviceId = _myDeviceId;
+                    deviceMeasuring.PipeId = _myPipeId;
+                    deviceMeasuring.Address = 0;
+                    deviceMeasuring.Coil = true;
+                    var dioName = deviceMeasuring.Coil ? "DO" : "DI";
+                    deviceMeasuring.Name = $"{DeviceIo.DeviceMap[DeviceId].Name}_{dioName}訊號{DeviceSignalIo.GetDeviceSignalListByDeviceId(DeviceId).Count + 1}";
+                }
+                break;
+            }
+            case Action.Save:
+            {
+                
+                await DeviceSignalIo.UpsertDeviceSignal(args.Data);
+                if (ToastObj != null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel()
+                    {
+                        CssClass = "e-toast-success",
+                        Content = "已儲存"
+                    });
+                }
+                break;
+            }
+            case Action.Delete:
+            {
+                await DeviceSignalIo.DeleteDeviceSignalAsync(args.Data);
+                if (ToastObj != null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel()
+                    {
+                        CssClass = "e-toast-success",
+                        Content = "已刪除"
+                    });
+                }
+                break;
+            }
+        }
+    }
+
+}

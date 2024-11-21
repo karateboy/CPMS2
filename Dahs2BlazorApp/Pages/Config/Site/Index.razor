@@ -1,0 +1,65 @@
+﻿@page "/Config/Site"
+@using Syncfusion.Blazor.Navigations
+
+<SfTab>
+    <TabAnimationSettings>
+        <TabAnimationPrevious Effect=AnimationEffect.FadeZoomIn></TabAnimationPrevious>
+        <TabAnimationNext Effect=AnimationEffect.FadeZoomIn></TabAnimationNext>
+    </TabAnimationSettings>
+    <TabItems>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="場所資訊" IconCss="e-icons e-location"></TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <div class="m-3">
+                    <SiteInfoTab></SiteInfoTab>
+                </div>
+            </ContentTemplate>
+        </TabItem>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="煙道參數" IconCss="e-icons e-filtered"> </TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <div class="m-3">
+                    <PipeTab></PipeTab>
+                </div>
+            </ContentTemplate>
+        </TabItem>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="測項參數" IconCss="e-icons e-properties-1"> </TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <div class="m-3">
+                    <MonitorTypeTab></MonitorTypeTab>
+                </div>
+            </ContentTemplate>
+        </TabItem>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="測項量測定義" IconCss="e-icons e-flags"> </TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <div class="m-3">
+                    <MonitorTypeDefTab></MonitorTypeDefTab>
+                </div>
+            </ContentTemplate>
+        </TabItem>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="系統版本" IconCss="e-icons e-star-filled"> </TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <div class="m-3">
+                    <h4>@_systemVersion</h4>
+                </div>
+            </ContentTemplate>
+        </TabItem>
+    </TabItems>
+</SfTab>
+
+@code {
+    readonly string _systemVersion = SiteConfig.Version;
+}

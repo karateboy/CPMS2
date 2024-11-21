@@ -1,0 +1,128 @@
+﻿@inject MonitorTypeIo MonitorTypeIo
+@inject PipeIo PipeIo
+@using Syncfusion.Blazor.Grids
+@using Action = Syncfusion.Blazor.Grids.Action
+@using FailureEventArgs = Syncfusion.Blazor.Grids.FailureEventArgs
+@using Dahs2BlazorApp.Models
+@using System.ComponentModel.DataAnnotations
+@inject ILogger<MonitorTypeDefTab> Logger
+
+<PageTitle>@Title</PageTitle>
+<PipeSelector PipeId="PipeId" PipeIdChanged="OnPipeIdChange"></PipeSelector>
+<br/>
+<SfGrid DataSource="@ActiveMonitorTypeDefs"
+        ColumnMenuItems=@MenuItems ShowColumnMenu="true"
+        AllowPaging="false" AllowSorting="true" AllowResizing="true">
+    <GridColumns>
+        <GridColumn Field="@nameof(TypeDefViewModel.Sid)"
+                    HeaderText="代碼"
+                    TextAlign="TextAlign.Center"
+                    IsPrimaryKey="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(TypeDefViewModel.Name)"
+                    HeaderText="名稱"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(TypeDefViewModel.AdjustFactor)"
+                    HeaderText="修正" TextAlign="TextAlign.Left" AutoFit="true" AllowEditing="false">
+        </GridColumn>
+        <GridColumn Field="@nameof(TypeDefViewModel.RangeMin)"
+                    HeaderText="最小值" TextAlign="TextAlign.Right" AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(TypeDefViewModel.RangeMax)"
+                    HeaderText="最大值" TextAlign="TextAlign.Right" AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(TypeDefViewModel.Offset)"
+                                    HeaderText="偏移" TextAlign="TextAlign.Right" AutoFit="true">
+                        </GridColumn>
+        <GridColumn Field="@nameof(TypeDefViewModel.Multiplier)"
+                            HeaderText="乘數" TextAlign="TextAlign.Right" AutoFit="true">
+                </GridColumn>
+        <GridColumn Field="@nameof(TypeDefViewModel.Calculated)"
+                    HeaderText="依靠其他測值計算?"
+                    DisplayAsCheckBox="true"
+                    TextAlign="TextAlign.Center"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(TypeDefinition.InterpolationFactor)"
+                    HeaderText="內插所得?"
+                    TextAlign="TextAlign.Center"
+                    AutoFit="true">
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+        private const string Title = "測項量測定義";
+    public int PipeId { get; set; }
+    public readonly string[] MenuItems = { "Group", "Ungroup", "ColumnChooser", "Filter" };
+
+    List<TypeDefViewModel> ActiveMonitorTypeDefs { get; set; } = new();
+
+    public class TypeDefViewModel : ITypeDefinition
+    {
+        public MonitorTypeCode Sid { get; init; }
+        public decimal RangeMin { get; init; }
+        public decimal RangeMax { get; init; }
+        public AdjustFactor AdjustFactor { get; init; }
+        public InterpolationFactor? InterpolationFactor { get; init; }
+        public decimal Offset { get; init; }
+        public decimal Multiplier { get; init; }
+        public CalculateFunction? Calculation { get; init; }
+        public bool Calculated => Calculation is not null;
+
+        public string Name { get; init; }
+
+        public TypeDefViewModel(ITypeDefinition typeDefinition, MonitorTypeIo monitorTypeIo, int pipeId)
+        {
+            Sid = typeDefinition.Sid;
+            RangeMin = typeDefinition.RangeMin;
+            RangeMax = typeDefinition.RangeMax;
+            AdjustFactor = typeDefinition.AdjustFactor;
+            Offset = typeDefinition.Offset;
+            Multiplier = typeDefinition.Multiplier;
+            InterpolationFactor = typeDefinition.InterpolationFactor;
+            Calculation = typeDefinition.Calculation;
+            Name = monitorTypeIo.PipeMonitorTypeMap[pipeId][Sid.ToString()].Name;
+        }
+    }
+    
+    protected override void OnInitialized()
+    {
+        PipeId = PipeIo.Pipes.First().Id;
+        UpdateActiveMonitorTypeDefs();
+    }
+
+
+    private void UpdateActiveMonitorTypeDefs()
+    {
+        try
+        {
+            List<TypeDefViewModel> mtDefList = new();
+
+            foreach (var monitorTypeDef in SiteConfig.PipeMonitorTypes[PipeId])
+            {
+                mtDefList.Add(new TypeDefViewModel(monitorTypeDef, MonitorTypeIo, PipeId));
+            }
+            ActiveMonitorTypeDefs = mtDefList;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed");
+        }
+    }
+    
+    private void OnPipeIdChange(int pipeId)
+    {
+        PipeId = pipeId;
+        UpdateActiveMonitorTypeDefs();
+    }
+
+    private void OnActionFailure(FailureEventArgs args)
+    {
+        Logger.LogError(args.Error, "MonitorTypeConfigPage error");
+    }
+
+}

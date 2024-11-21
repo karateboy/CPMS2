@@ -1,0 +1,293 @@
+﻿@page "/query/data"
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Calendars
+@using System.ComponentModel.DataAnnotations
+@using System.Dynamic
+@using Dahs2BlazorApp.Models
+@using Syncfusion.Blazor.Navigations
+@inject PipeIo MyPipeIo
+@inject MonitorTypeIo MonitorTypeIo
+@inject RecordIo RecordIo
+@inject ILogger<Index> Logger
+
+<PageTitle>@Title</PageTitle>
+<div class="row g-0">
+    <div class="col-lg-6 col-md-8 col-sm-12">
+        <div class="card border m-3 shadow">
+            <h4 class="card-header text-center text-white bg-primary bg-gradient">@Title</h4>
+            <div class="card-body">
+                <EditForm Model="@_model" OnValidSubmit="OnValidSubmit">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="Pipe">煙道</label>
+                        <div class="col-md-10">
+                            <SfDropDownList ID="Pipe" TValue="int" TItem="IPipe" @bind-value="@_model.PipeId"
+                                            DataSource="@MyPipeIo.Pipes">
+                                <DropDownListFieldSettings Value="Id" Text="Name"></DropDownListFieldSettings>
+                                <DropDownListEvents TValue="int" TItem="IPipe" ValueChange="OnPipeIdChange"></DropDownListEvents>
+                            </SfDropDownList>
+                            <ValidationMessage For="@(() => _model.PipeId)"/>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="Pipe">資料種類</label>
+                        <div class="col-md-10">
+                            <SfDropDownList ID="TableType"
+                                            TValue="TableType"
+                                            TItem="KeyValuePair<TableType, string>"
+                                            @bind-value="@_model.TableType"
+                                            DataSource="@RecordIo.TableTypeNameMap">
+                                <DropDownListFieldSettings Value="Key" Text="Value"></DropDownListFieldSettings>
+                                <DropDownListEvents TValue="TableType" TItem="KeyValuePair<TableType, string>" ValueChange="OnTableTypeChanged"></DropDownListEvents>
+                            </SfDropDownList>
+                            <ValidationMessage For="@(() => _model.TableType)"/>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="MonitorTypes">測項</label>
+                        <div class="col-md-10">
+                            <SfMultiSelect ID="MonitorTypes" TValue="string[]" TItem="IMonitorType" DataSource="@MonitorTypes"
+                                           @bind-Value="@_model.MonitorTypes">
+                                <MultiSelectFieldSettings Text="Name" Value="Sid"></MultiSelectFieldSettings>
+                                <MultiSelectEvents TValue="string[]" TItem="IMonitorType" ValueChange="OnMonitorTypeChanged"></MultiSelectEvents>
+                            </SfMultiSelect>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="DateStart">開始</label>
+                        <div class="col-md-10">
+                            <SfDateTimePicker ID="DateStart" TValue="DateTime?" @bind-Value="@_model.Start"></SfDateTimePicker>
+
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="DateEnd">結束(不含)</label>
+                        <div class="col-md-10">
+                            <SfDateTimePicker ID="DateEnd" TValue="DateTime?" @bind-Value="@_model.End"></SfDateTimePicker>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <div class="offset-md-2">
+                            <button type="submit" class="btn btn-success btn-sm">查詢</button>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+<br/>
+@if (DisplayReport)
+{
+    <div style="position:relative; min-height: 500px;">
+        <SfGrid ID="report"
+                @ref="Grid"
+                DataSource="QueryResult"
+                Toolbar="@(new List<string> { "ExcelExport" })"
+                EnableAdaptiveUI="false"
+                Height="100%" Width="100%"
+                AllowSorting="true"
+                AllowExcelExport="true"
+                AllowPaging="true">
+            <GridEvents TValue="dynamic" OnToolbarClick="ToolbarClickHandler"></GridEvents>
+            <GridPageSettings PageSizes="true"></GridPageSettings>
+            <GridColumns>
+                <GridColumn
+                    Field="CreateDate"
+                    HeaderText="資料時間"
+                    TextAlign="TextAlign.Left" AutoFit="true"
+                    Visible="true">
+                </GridColumn>
+                @if (_model.MonitorTypes is not null)
+                {
+                    foreach (var mt in _model.MonitorTypes)
+                    {
+                        <GridColumn
+                            Field="@mt"
+                            HeaderText="@GetMonitorTypeName(mt)"
+                            TextAlign="TextAlign.Right" AutoFit="true"
+                            Format="F2"
+                            Visible="true">
+                            <Template>
+                                @{
+                                    IDictionary<string, object> dict = context as dynamic;
+                                    if (dict.TryGetValue(GetMtStatus(mt), out var mtStatus))
+                                    {
+                                        <div class="@($"{((string)mtStatus).ToRecordStatus().ToCss()}")">
+                                            @if (dict.TryGetValue(mt, out var mtValue))
+                                            {
+                                                @($"{(decimal?)mtValue:F2}")
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </Template>
+                        </GridColumn>
+                        <GridColumn
+                            Field="@GetMtStatus(mt)"
+                            HeaderText="狀態碼"
+                            TextAlign="TextAlign.Right" AutoFit="true"
+                            Visible="true">
+                            <Template>
+                                @{
+                                    IDictionary<string, object> dict = context as dynamic;
+                                    if (dict.TryGetValue(GetMtStatus(mt), out var mtStatus))
+                                    {
+                                        <div class="@($"{((string)mtStatus).ToRecordStatus().ToCss()}")">
+                                            @mtStatus
+                                        </div>
+                                    }
+                                }
+                            </Template>
+                        </GridColumn>
+                    }
+                }
+            </GridColumns>
+        </SfGrid>
+    </div>
+}
+<style>
+    .e-grid .e-rowcell {
+        margin: 7px 7px 7px 7px;
+        padding: 0 0 0 0;
+    }
+</style>
+
+
+@code {
+    private const string Title = "資料查詢";
+    private bool DisplayReport { get; set; }
+
+    private string GetMonitorTypeName(string mt) => MonitorTypeIo.PipeMonitorTypeMap[_model.PipeId][mt].Name;
+
+    private string GetMtStatus(string mt) => $"{mt}_status";
+
+    public class QueryModel
+    {
+        [Required(ErrorMessage = "請選擇煙道")] public int PipeId { get; set; }
+
+        [Required(ErrorMessage = "請選擇資料種類")] public TableType TableType { get; set; }
+
+        [Required, MinLength(1, ErrorMessage = "請選擇至少一個測項")]
+        public required string[] MonitorTypes { get; set; }
+
+        [Required(ErrorMessage = "請選擇開始時間")] public DateTime? Start { get; set; } = DateTime.Today;
+
+        [Required(ErrorMessage = "請選擇結束時間(不含)")]
+        public DateTime? End { get; set; } = DateTime.Now.AddHours(1);
+    }
+
+    private readonly QueryModel _model = new()
+    {
+        PipeId = SiteConfig.DefaultPipes[0].Id,
+        MonitorTypes = new string[] { },
+    };
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _model.PipeId = MyPipeIo.Pipes.First().Id;
+        _model.TableType = TableType.RawData;
+        UpdateMonitorTypes();
+        _model.MonitorTypes = MonitorTypes.Select(mt => mt.Sid).ToArray();
+    }
+
+
+    private List<IMonitorType> MonitorTypes { get; set; } = new();
+
+    void OnPipeIdChange(ChangeEventArgs<int, IPipe> args)
+    {
+        DisplayReport = false;
+        _model.TableType = TableType.RawData;
+        UpdateMonitorTypes();
+        _model.MonitorTypes = MonitorTypes.Select(mt => mt.Sid).ToArray();
+    }
+
+    public List<dynamic> QueryResult = new();
+    private SfGrid<dynamic>? Grid;
+    public int GridHeight;
+
+    async Task OnValidSubmit()
+    {
+        Logger.LogDebug("start={Start} end={End}", _model.Start, _model.End);
+        var recordTimeMap = await RecordIo.GetData(_model.TableType,
+            _model.PipeId,
+            _model.MonitorTypes.ToList(),
+            _model.Start!.Value,
+            _model.End!.Value);
+
+        DisplayReport = true;
+        var recordTimes = recordTimeMap.Keys.ToList();
+        recordTimes.Sort();
+        Logger.LogDebug("Total {Records} records", recordTimeMap.Count);
+
+        List<dynamic> resultList = new();
+        foreach (var createDate in recordTimes)
+        {
+            dynamic entry = new ExpandoObject();
+            ((IDictionary<string, object>)entry)["CreateDate"] = $"{createDate:G}";
+            if (recordTimeMap.TryGetValue(createDate, out var recordMap))
+            {
+                foreach (var mt in _model.MonitorTypes)
+                {
+                    if (recordMap.TryGetValue(mt, out var record))
+                    {
+                        if (record.Value.HasValue)
+                            ((IDictionary<string, object>)entry)[mt] = record.Value;
+
+                        ((IDictionary<string, object>)entry)[GetMtStatus(mt)] = record.Status;
+                    }
+                }
+            }
+
+            resultList.Add(entry);
+        }
+
+        QueryResult = resultList;
+    }
+
+    private async Task ToolbarClickHandler(ClickEventArgs args)
+    {
+        if (args.Item.Id.EndsWith("excelexport"))
+        {
+            var columns = Grid?.Columns.Select(col => col.Description).ToList();
+            Logger.LogInformation("Export to Excel {Columns}", columns);
+            var excelExportProperties = new ExcelExportProperties
+            {
+                FileName = $"{MyPipeIo.PipeMap[_model.PipeId].Name}{RecordIo.TableTypeNameMap[_model.TableType]}{_model.Start:yyyyMMdd}_{_model.End:MMdd}.xlsx",
+                IncludeTemplateColumn = true
+            };
+            if (Grid != null) await Grid.ExportToExcelAsync(excelExportProperties);
+        }
+    }
+
+    private void UpdateMonitorTypes()
+    {
+        switch (_model.TableType)
+        {
+            case TableType.RawData:
+            case TableType.AdjustedData:
+            case TableType.AdjustedData60:
+                MonitorTypes = MonitorTypeIo.GetMonitorTypes(_model.PipeId).ToList();
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        _model.MonitorTypes = MonitorTypes.Select(mt => mt.Sid).ToArray();
+    }
+
+    private void OnTableTypeChanged(ChangeEventArgs<TableType, KeyValuePair<TableType, string>> args)
+    {
+        DisplayReport = false;
+        UpdateMonitorTypes();
+    }
+
+    private void OnMonitorTypeChanged(MultiSelectChangeEventArgs<string[]> args)
+    {
+        DisplayReport = false;
+    }
+
+}

@@ -1,0 +1,65 @@
+﻿@inject NavigationManager NavigationManager
+@inject HttpClient Http
+@using Syncfusion.Blazor.DropDowns
+
+<div style="padding-left:20px">
+<SfDropDownList TValue="string" TItem="Cultures" DataSource="@CultureList" Width="143px" Index="@cultureIndex" PopupWidth="143px" CssClass="localization-combo">
+        <DropDownListEvents TItem="Cultures" TValue="string" ValueChange="OnSelected"></DropDownListEvents>
+        <DropDownListFieldSettings Value="Code" Text="Text"></DropDownListFieldSettings>
+    </SfDropDownList>
+</div>
+<style>
+    .localization-combo {
+        border-radius: 4px;
+        border-color: #B3B3B3;
+        font-family: OpenSans-Regular;
+        font-size: 12px;
+        background-color: #FFFFFF;
+        border-width: 1px;
+        color: #333333;
+    }
+</style>
+
+
+@code {
+    private int cultureIndex { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        this.cultureIndex = System.Globalization.CultureInfo.CurrentCulture.Name switch
+        {
+            "en-US" => 0,
+            "zh" => 1,
+            _ => this.cultureIndex
+            };
+    }
+
+    private void OnSelected(Syncfusion.Blazor.DropDowns.ChangeEventArgs<string,Cultures> e)
+    {
+        var culture = (string)e.Value;
+        var uri = new Uri(NavigationManager.Uri)
+            .GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
+        var query = $"?culture={Uri.EscapeDataString(culture)}&" +
+            $"redirectUri={Uri.EscapeDataString(uri)}";
+        this.cultureIndex = culture switch
+        {
+            "en-US" => 0,
+            "zh" => 1,
+            _ => this.cultureIndex
+            };
+        NavigationManager.NavigateTo("/Culture/SetCulture" + query, forceLoad: true);
+    }
+	public class Cultures
+    {
+        public string Text { get; set; } = string.Empty;
+
+        public string Code { get; set; } = string.Empty;
+    }
+
+    List<Cultures> CultureList = new List<Cultures>
+   {
+        new Cultures() { Text = "English (en-US)", Code = "en-US" },
+        new Cultures() { Text = "中文 (zh-Tw)", Code = "zh" },
+    };
+}

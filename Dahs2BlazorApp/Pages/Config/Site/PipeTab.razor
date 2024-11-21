@@ -1,0 +1,116 @@
+﻿@page "/pipe-config"
+@inject PipeIo PipeIo
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.DropDowns
+@using Action = Syncfusion.Blazor.Grids.Action
+@using Dahs2BlazorApp.Models
+@inject ILogger<PipeTab> Logger
+@inject AlarmIo AlarmIo
+
+<PageTitle>@Title</PageTitle>
+
+<SfGrid DataSource="@_pipes" Toolbar="@(new List<string> { "Edit", "Update", "Cancel" })" AllowPaging="false">
+    <GridEditSettings Mode="EditMode.Dialog" AllowAdding="false" AllowDeleting="false" AllowEditing="true">
+        <HeaderTemplate>
+            @{
+                if (context is IPipe pipe)
+                {
+                    <span>
+                        @($"編輯{pipe.Name}煙道參數")
+
+                    </span>    
+                }
+            }
+        </HeaderTemplate>
+    </GridEditSettings>
+    <GridEvents OnActionBegin="OnActionBegin" TValue="Pipe"></GridEvents>
+    <GridColumns>
+        <GridColumn Field="@nameof(IPipe.EpaCode)"
+                    HeaderText="排放口編號"
+                    ValidationRules="@(new ValidationRules{ Required=true})"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true"
+                    IsPrimaryKey="true"
+                    AllowEditing="true"></GridColumn>
+        <GridColumn Field="@nameof(IPipe.Name)"
+                    HeaderText="顯示名稱"
+                    ValidationRules="@(new ValidationRules { Required = true })"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true"
+                    AllowEditing="true"></GridColumn>
+        <GridColumn Field="@nameof(IPipe.Area)"
+                    HeaderText="截面積"
+                    ValidationRules="@(new ValidationRules { Required = true })"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true"
+                    EditType="EditType.NumericEdit"
+                    AllowEditing="false"></GridColumn>
+        <GridColumn Field="@nameof(Pipe.LightDiameter)"
+                    HeaderText="光徑長度"
+                    ValidationRules="@(new ValidationRules { Required = true })"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true"
+                    EditType="EditType.NumericEdit"
+                    AllowEditing="false"></GridColumn>
+        <GridColumn Field="@nameof(Pipe.BaseO2)"
+                    HeaderText="氧氣基準值"
+                    ValidationRules="@(new ValidationRules { Required = true })"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true"
+                    EditType="EditType.NumericEdit"
+                    AllowEditing="false"></GridColumn>
+        <GridColumn Field="@nameof(Pipe.EmissionDiameter)"
+                    HeaderText="排放口徑(m)"
+                    ValidationRules="@(new ValidationRules { Required = true })"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true"
+                    EditType="EditType.NumericEdit"
+                    AllowEditing="false"></GridColumn>
+        <GridColumn Field="@nameof(Pipe.UpperSource)"
+                    HeaderText="上游汙染源代號"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true"
+                    AllowEditing="true"></GridColumn>
+        <GridColumn Field="@nameof(Pipe.AutoLoadState)"
+                            HeaderText="依負載切換起停爐"
+                            TextAlign="TextAlign.Right"
+                            DisplayAsCheckBox="true"
+                            AutoFit="true"
+                            AllowEditing="true"></GridColumn>
+        <GridColumn Field="@nameof(Pipe.StopThreshold)"
+                    HeaderText="起停爐負載"
+                    TextAlign="TextAlign.Right"
+                    Format="F3"
+                    AutoFit="true"
+                    AllowEditing="true"></GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+    private const string Title = "煙道參數設定";
+    [CascadingParameter]
+    SfToast? ToastObj { get; set; }
+
+    List<Pipe> _pipes = new();
+    
+    protected override void OnInitialized()
+    {
+        _pipes = PipeIo.Pipes;
+    }
+
+    private async void OnActionBegin(ActionEventArgs<Pipe> args)
+    {
+        if (args.RequestType == Action.Save)
+        {
+            Logger.LogInformation("Update Pipe {@Pipe}", args.Data);
+            _ = AlarmIo.AddAlarm(AlarmIo.AlarmLevel.Info, $"{args.Data.Name} 煙道 更新上游排放管道");
+            await PipeIo.UpdatePipe(args.Data);
+            if (ToastObj == null) return;
+            await ToastObj.ShowAsync(new ToastModel()
+            {
+                CssClass = "e-toast-success",
+                Content = "煙道參數已更新"
+            });
+        }
+    }
+}

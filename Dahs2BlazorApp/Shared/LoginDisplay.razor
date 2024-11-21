@@ -1,0 +1,36 @@
+﻿@using Syncfusion.Blazor.Buttons
+@using Syncfusion.Blazor.Popups
+<AuthorizeView>
+    <Authorized>
+        <div class="m-2 clearfix">
+            <h5 class="text-light float-start">
+                <a href="Identity/Account/Manage">@context.User.Identity?.Name</a>&nbsp;您好
+            </h5>
+            <form method="post" action="Identity/Account/Logout" class="float-end">
+                <SfButton IconCss="oi oi-account-logout" type="submit">登出</SfButton>
+            </form>
+        </div>
+
+    </Authorized>
+    <NotAuthorized>
+        <div class="ps-1">
+            <h4 class="text-light">
+                <a href="Identity/Account/Login"><SfButton IconCss="oi oi-account-login">登入</SfButton></a>
+            </h4>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+<style>
+    .buttonstyle {
+        border: thin;
+        background-color: transparent;
+        padding-left: 15px;
+        
+        
+    }
+    .buttonstyle:focus{
+        outline:none
+    }
+
+</style>

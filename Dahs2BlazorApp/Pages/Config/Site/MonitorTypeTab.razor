@@ -1,0 +1,234 @@
+﻿@inject MonitorTypeIo MonitorTypeIo
+@inject PipeIo PipeIo
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.DropDowns
+@using Action = Syncfusion.Blazor.Grids.Action
+@using FailureEventArgs = Syncfusion.Blazor.Grids.FailureEventArgs
+@using Dahs2BlazorApp.Models
+@using System.ComponentModel.DataAnnotations
+@inject ILogger<MonitorTypeTab> Logger
+@inject AlarmIo AlarmIo
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
+
+<PageTitle>@Title</PageTitle>
+<PipeSelector PipeId="PipeId" PipeIdChanged="OnPipeIdChange"></PipeSelector>
+<br/>
+<SfGrid @ref="Grid" DataSource="@ActiveMonitorTypes" Toolbar="@(new List<string>() { "Edit", "Update", "Cancel" })"
+        ColumnMenuItems=@MenuItems ShowColumnMenu="true"
+        AllowPaging="false" AllowSorting="true" AllowResizing="true">
+    <GridEditSettings Mode="EditMode.Dialog" AllowAdding="false" AllowDeleting="false" AllowEditing="true">
+        <HeaderTemplate>
+            @{
+                if (context is MonitorTypeViewModel mt)
+                {
+                    <span>@GetHeader(mt)</span>
+                }
+            }
+        </HeaderTemplate>
+    </GridEditSettings>
+    <GridSortSettings></GridSortSettings>
+    <GridSortSettings>
+        <GridSortColumns>
+            <GridSortColumn Field="@nameof(MonitorTypeViewModel.Order)" Direction="SortDirection.Ascending"></GridSortColumn>
+        </GridSortColumns>
+    </GridSortSettings>
+    <GridEvents OnActionComplete="OnActionComplete" TValue="MonitorTypeViewModel"></GridEvents>
+    <GridColumns>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.PipeId)"
+                    HeaderText="煙道"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true" AllowEditing="false"
+                    Visible="false">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.Sid)"
+                    HeaderText="代碼"
+                    TextAlign="TextAlign.Left"
+                    IsPrimaryKey="true"
+                    AutoFit="true" AllowEditing="false">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.Name)"
+                    HeaderText="名稱"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.Order)"
+                    HeaderText="順序"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.Upload)"
+                    HeaderText="上傳"
+                    TextAlign="TextAlign.Center"
+                    EditType="EditType.BooleanEdit"
+                    DisplayAsCheckBox="true"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.Standard)"
+                    HeaderText="法規標準"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.Standard4Stop)"
+                    HeaderText="停爐標準"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.Alarm)"
+                    HeaderText="警告上限"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.AlarmLow)"
+                    HeaderText="警告下限"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.EmissionFactor)"
+                    HeaderText="排放係數"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.ControlEfficiency)"
+                    HeaderText="汙染控制效率"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.MaxValue)"
+                    HeaderText="最大可能濃度/測值"
+                    TextAlign="TextAlign.Right"
+                    AutoFit="true">
+        </GridColumn>
+        <GridColumn Field="@nameof(MonitorTypeViewModel.MonitorOtherPipe)"
+                    HeaderText="同時監控其他管道編號"
+                    TextAlign="TextAlign.Left"
+                    AutoFit="true">
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+
+    [CascadingParameter]
+    SfToast? ToastObj { get; set; }
+
+        private const string Title = "測項參數設定";
+    public int PipeId { get; set; }
+    private readonly string[] MenuItems = { "Group", "Ungroup", "ColumnChooser", "Filter" };
+
+    List<MonitorTypeViewModel> ActiveMonitorTypes { get; set; } = new();
+
+    private SfGrid<MonitorTypeViewModel>? Grid;
+    
+    protected override void OnInitialized()
+    {
+        PipeId = PipeIo.Pipes.First().Id;
+        UpdateActiveMonitorTypes();
+    }
+
+    public class MonitorTypeViewModel : IMonitorType
+    {
+        public int PipeId { get; set; }
+        public required string Sid { get; set; }
+
+        [Required]
+        public required string Name { get; set; }
+
+        [Required]
+        public required string Unit { get; set; }
+
+        [Required]
+        public required string Unit2 { get; set; }
+
+        public bool Upload { get; set; }
+        public decimal? Standard { get; set; }
+        public decimal? Standard4Stop { get; set; }
+        public decimal? Alarm { get; set; }
+        public decimal? Warning { get; set; }
+        public decimal? AlarmLow { get; set; }
+        public decimal? WarningLow { get; set; }
+        public decimal? EmissionFactor { get; set; }
+        public decimal? ControlEfficiency { get; set; }
+        public required string OverrideState { get; set; }
+        public required string SrcState { get; set; }
+        public int Order { get; set; }
+        public decimal? MaxValue { get; set; }
+        public string? MonitorOtherPipe { get; set; }
+        public string OverrideStateName => 
+            MonitorTypeState.StateNameMap.TryGetValue(OverrideState, out var name) ? name : OverrideState;
+        public string SrcStateName => 
+            PipeState.PipeStateNameMap.TryGetValue(SrcState, out var name) ? name : SrcState;
+    }
+
+    private string GetHeader(MonitorTypeViewModel monitorTypeViewModel)
+    {
+        return $"編輯{monitorTypeViewModel.Name}";
+    }
+
+    private void UpdateActiveMonitorTypes()
+    {
+        try
+        {
+            if (!MonitorTypeIo.PipeMonitorTypeMap.TryGetValue(PipeId, out var mtMap)) return;
+            List<MonitorTypeViewModel> data = new();
+
+            data.AddRange(mtMap.Select(mtPair => new MonitorTypeViewModel
+            {
+                PipeId = PipeId,
+                Sid = mtPair.Key,
+                Name = mtPair.Value.Name,
+                Unit = mtPair.Value.Unit,
+                Unit2 = mtPair.Value.Unit2,
+                Upload = mtPair.Value.Upload,
+                Standard = mtPair.Value.Standard,
+                Standard4Stop = mtPair.Value.Standard4Stop,
+                Alarm = mtPair.Value.Alarm,
+                Warning = mtPair.Value.Warning,
+                AlarmLow = mtPair.Value.AlarmLow,
+                WarningLow = mtPair.Value.WarningLow,
+                EmissionFactor = mtPair.Value.EmissionFactor,
+                ControlEfficiency = mtPair.Value.ControlEfficiency,
+                OverrideState = mtPair.Value.OverrideState,
+                SrcState = mtPair.Value.SrcState,
+                Order = mtPair.Value.Order,
+                MaxValue = mtPair.Value.MaxValue,
+                MonitorOtherPipe = mtPair.Value.MonitorOtherPipe
+            }));
+            ActiveMonitorTypes = data.OrderBy(mt => mt.Order).ToList();
+            Grid?.Refresh();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed");
+        }
+    }
+
+    private void OnPipeIdChange(int pipeId)
+    {
+        PipeId = pipeId;
+        UpdateActiveMonitorTypes();
+    }
+
+    private void OnActionFailure(FailureEventArgs args)
+    {
+        Logger.LogError(args.Error, "MonitorTypeConfigPage error");
+    }
+
+    private async void OnActionComplete(ActionEventArgs<MonitorTypeViewModel> args)
+    {
+        if (args.RequestType != Action.Save) return;
+
+        var authenticationState = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+        Logger.LogInformation("Update MonitorType: {PipeId} {Sid} {@MonitorType}", args.Data.PipeId, args.Data.Sid, args.Data);
+        _ = AlarmIo.AddAlarm(AlarmIo.AlarmLevel.Info, $"使用者{authenticationState.User.Identity?.Name}> 煙道{args.Data.PipeId} 測項{args.Data.Sid} 參數已更新");
+        await MonitorTypeIo.UpsertMonitorType(args.Data);
+        if (ToastObj != null)
+        {
+            await ToastObj.ShowAsync(new ToastModel()
+            {
+                CssClass = "e-toast-success",
+                Content = "更新成功"
+            });
+        }
+    }
+
+}

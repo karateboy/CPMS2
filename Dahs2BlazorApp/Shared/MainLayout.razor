@@ -1,0 +1,179 @@
+﻿@inherits LayoutComponentBase
+@using Syncfusion.Blazor.Navigations
+@using Syncfusion.Blazor.Inputs
+@using Syncfusion.Blazor
+<script>
+  window.downloadStream = async (fileName, contentStreamReference) => {
+    const arrayBuffer = await contentStreamReference.arrayBuffer();
+    const blob = new Blob([arrayBuffer]);
+    const url = URL.createObjectURL(blob);
+    const anchorElement = document.createElement('a');
+    anchorElement.href = url;
+    anchorElement.download = fileName ?? '';
+    anchorElement.click();
+    anchorElement.remove();
+    URL.revokeObjectURL(url);
+  }
+</script>
+<Syncfusion.Blazor.Popups.SfDialogProvider/>
+<SfToast ID="toast" @ref="ToastObj" Title="通知" Timeout="2000" CssClass="e-toast-success" Icon="e-success toast-icons">
+    <ToastPosition X="Center" Y="Top"></ToastPosition>
+</SfToast>
+<div id="wrapper">
+    @*Initialize the Sidebar component*@
+    <SfSidebar class="sidebar-treeview align-self-stretch" Width="290px" Target=".main-content" MediaQuery="(min-width:4000px)" @bind-IsOpen="SidebarToggle">
+        <ChildContent>
+            <div class="main-menu">
+                <div>
+                    <NavMenu/>
+                </div>
+            </div>
+        </ChildContent>
+    </SfSidebar>
+
+    <div class="d-flex align-items-center">
+        <SfToolbar CssClass="p-1">
+            <ToolbarEvents Clicked="@Toggle"></ToolbarEvents>
+            <ToolbarItems>
+                <ToolbarItem PrefixIcon="e-icons e-justify" TooltipText="Menu"></ToolbarItem>
+            </ToolbarItems>
+        </SfToolbar>
+        <div class="flex-fill text-center">
+            <strong id="header">@_headerText</strong>
+        </div>
+    </div>
+    @*main-content declaration*@
+    @if (ToastObj is not null)
+    {
+        <CascadingValue Value="@ToastObj" IsFixed="true">
+            <div class="main-content" id="main-text">
+                <div class="sidebar-content">
+                    @Body
+                </div>
+            </div>
+        </CascadingValue>
+    }
+</div>
+
+@code {
+
+    // Specifies the value of TreeView component ExpanOn property.
+    public ExpandAction Expand = ExpandAction.Click;
+
+    // Specify the value of Sidebar component state. It indicates whether the sidebar component is in an open/close state.
+    public bool SidebarToggle;
+
+    readonly string _headerText = $"{SiteConfig.SiteName}";
+
+    // Specifies the event handler for Clicked event in Toolbar component.
+    public void Toggle(ClickEventArgs args)
+    {
+        if (args.Item.TooltipText == "Menu")
+        {
+            SidebarToggle = !SidebarToggle;
+        }
+    }
+
+    protected SfToast? ToastObj { get; set; }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
+    }
+
+}
+
+<style>  
+    #header {        
+        font-size: 2rem;
+        font-weight: bolder;
+        font-family: "Arial Black", Arial, sans-serif;                
+    }  
+    /* Specific styles for TreeView component*/
+
+    #wrapper .sidebar-treeview {
+        z-index: 20 !important;
+        background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%); 
+        height: calc(100vh - 3.5rem);
+    }
+    /* Specific styles for main-menu-header element */
+
+    /* specifies the table of content area styles */
+
+    /*Specific styles for content area elements */
+
+    #main-text .sidebar-content {
+        padding: 0;
+        font-size: 14px;
+        overflow: auto;
+    }
+
+    .e-bigger #main-text .sidebar-content {
+        font-size: 16px;
+    }
+
+    .e-bigger .e-folder {
+        font-size: 18px;
+    }
+
+    .e-folder {
+        text-align: center;
+        font-weight: 500;
+        font-size: 16px
+    }
+    /* Specific styles for TreeView component*/
+
+    /* Specific styles for Toolbar component */
+
+    #wrapper .main-content {
+        height: calc(100vh - 3.5rem);
+    }
+    /* Specific styles for Overall wrapper element*/
+    .material .sidebar-treeview {
+        border-right: 1px solid rgba(0,0,0,0.12) !important;
+    }
+
+    .fabric .sidebar-treeview {
+        border-right: 1px solid #eaeaea !important;
+    }
+
+    .tailwind .sidebar-treeview {
+        border-right: 1px solid #d7d7d7 !important;
+    }
+
+    .bootstrap5-dark .sidebar-treeview {
+        border-right: 1px solid #444c54 !important;
+    }
+
+    .bootstrap5 .sidebar-treeview {
+        border-right: 1px solid #dee2e6 !important;
+    }
+
+    .material-dark .sidebar-treeview {
+        border-right: 1px solid #616161 !important;
+    }
+
+    .fabric-dark .sidebar-treeview {
+        border-right: 1px menu #414040 !important;
+    }
+
+    .tailwind-dark .sidebar-treeview {
+        border-right: 1px solid #4b5563 !important;
+    }
+
+    .form-label {
+        font-size: larger;
+        font-weight: bolder;
+    }
+    
+    .col-form-label {
+        font-size: larger;
+        font-weight: bolder;
+    }
+    .form-check-label {
+        font-size: larger;
+        font-weight: bolder;
+    }
+
+    </style>

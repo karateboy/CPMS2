@@ -1,0 +1,5 @@
+﻿CREATE TABLE [dbo].[SysConfig]
+(
+	[ConfigKey] NVARCHAR(50) NOT NULL PRIMARY KEY, 
+    [Value] NVARCHAR(50) NOT NULL
+)

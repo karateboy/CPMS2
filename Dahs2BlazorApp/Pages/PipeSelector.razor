@@ -1,0 +1,48 @@
+﻿@inject PipeIo PipeIo
+@using Syncfusion.Blazor.DropDowns
+<form>
+    <div class="row mb-3">
+        <label for="Pipe" class="col-md-1 col-sm-3 col-form-label">煙道:</label>
+        <div class="col-md-3 col-sm-3">
+            <SfDropDownList ID="Pipe" TValue="int" TItem="IPipe" CssClass="form-control"
+                            @bind-value="@MyPipeId" DataSource="@PipeIo.Pipes">
+                <DropDownListFieldSettings Value="Id" Text="Name"></DropDownListFieldSettings>
+                <DropDownListEvents TValue="int" TItem="IPipe" ValueChange="OnPipeIdChange"></DropDownListEvents>
+            </SfDropDownList>
+        </div>
+    </div>
+</form>
+<style>
+    .col-form-label {
+        font-size: large;
+        font-weight: bolder;
+    }
+</style>
+@code {
+
+    [Parameter]
+    public int PipeId { get; set; }
+
+    [Parameter]
+    public EventCallback<int> PipeIdChanged { get; set; }
+
+    public int MyPipeId;
+
+    private void OnPipeIdChange(ChangeEventArgs<int, IPipe> args)
+    {
+        PipeId = args.Value;
+        PipeIdChanged.InvokeAsync(PipeId);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        PipeId = PipeIo.Pipes.First().Id;
+    }
+
+    protected override void OnParametersSet()
+    {
+        MyPipeId = PipeId;
+    }
+
+}

@@ -1,0 +1,132 @@
+﻿@using System.ComponentModel.DataAnnotations
+@inject SiteInfoIo SiteInfoIo
+@inject ILogger<SiteInfoTab> Logger
+<PageTitle>@Title</PageTitle>
+
+<EditForm Model="@_model" OnValidSubmit="OnValidSubmit" class="w-75">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="Name">場所名稱</label>
+        <div class="col-md-5">
+            <InputText Id="Name" class="form-control" @bind-Value="_model!.Name"/>
+            <ValidationMessage For="@(() => _model!.Name)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="Name">管制編號</label>
+        <div class="col-md-5">
+            <InputText Id="SiteCode" class="form-control" @bind-Value="_model!.SiteCode"/>
+            <ValidationMessage For="@(() => _model!.SiteCode)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="Name">地址</label>
+        <div class="col-md-5">
+            <InputText Id="Address" class="form-control" @bind-Value="_model!.Address"/>
+            <ValidationMessage For="@(() => _model!.Address)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="Phone">電話</label>
+        <div class="col-md-5">
+            <InputText Id="Phone" class="form-control" @bind-Value="_model!.Phone"/>
+            <ValidationMessage For="@(() => _model!.Phone)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="Name">負責人</label>
+        <div class="col-md-5">
+            <InputText Id="Owner" class="form-control" @bind-Value="_model!.Owner"/>
+            <ValidationMessage For="@(() => _model!.Owner)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="Name">公司場所編碼</label>
+        <div class="col-md-5">
+            <InputText Id="PlaceNumber" class="form-control" @bind-Value="_model!.PlaceNumber"/>
+            <ValidationMessage For="@(() => _model!.PlaceNumber)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="Name">產業名稱</label>
+        <div class="col-md-5">
+            <InputText Id="Industry" class="form-control" @bind-Value="_model!.Industry"/>
+            <ValidationMessage For="@(() => _model!.Industry)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="Name">產業編碼</label>
+        <div class="col-md-5">
+            <InputText Id="IndustryCode" class="form-control" @bind-Value="_model!.IndustryCode"/>
+            <ValidationMessage For="@(() => _model!.IndustryCode)"/>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="offset-md-1">
+            <button type="submit" class="btn btn-success">更新</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private const string Title = "場所資訊";
+
+    [CascadingParameter] SfToast? ToastObj { get; set; }
+
+    public class SiteInfoModel : SiteInfoIo.ISiteInfo
+    {
+        [Required(ErrorMessage = "場所名稱不能是空的")] public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "管制編號不能是空的")] public string SiteCode { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "地址不能是空的")] public string Address { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "負責人不能是空的")] public string Owner { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "公私場所編碼不能是空的")]
+        public string PlaceNumber { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "產業名稱不能是空的")] public string Industry { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "產業編碼不能是空的")] public string IndustryCode { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "電話不能是空的")] public string Phone { get; set; } = string.Empty;
+
+        public void Copy(SiteInfoIo.ISiteInfo siteInfo)
+        {
+            Name = siteInfo.Name;
+            SiteCode = siteInfo.SiteCode;
+            Address = siteInfo.Address;
+            Owner = siteInfo.Owner;
+            PlaceNumber = siteInfo.PlaceNumber;
+            Industry = siteInfo.Industry;
+            IndustryCode = siteInfo.IndustryCode;
+            Phone = siteInfo.Phone;
+        }
+    }
+
+    private SiteInfoModel? _model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _model = new SiteInfoModel();
+        _model.Copy(await SiteInfoIo.GetSiteInfo());
+    }
+
+    private async Task OnValidSubmit()
+    {
+        Logger.LogInformation("Submit called: Processing the form");
+        await SiteInfoIo.UpsertSiteInfo(_model!);
+
+        if (ToastObj != null)
+            await ToastObj.ShowAsync(new ToastModel
+            {
+                CssClass = "e-toast-success",
+                Content = "更新成功"
+            });
+    }
+
+}

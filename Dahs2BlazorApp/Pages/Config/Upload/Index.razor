@@ -1,0 +1,35 @@
+﻿@page "/Config/Upload"
+@using Syncfusion.Blazor.Navigations
+
+<SfTab>
+    <TabAnimationSettings>
+        <TabAnimationPrevious Effect=AnimationEffect.FadeZoomIn></TabAnimationPrevious>
+        <TabAnimationNext Effect=AnimationEffect.FadeZoomIn></TabAnimationNext>
+    </TabAnimationSettings>
+    <TabItems>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="上傳設定" IconCss="e-icons e-field-settings"></TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <div class="m-3">
+                    <UploadTab></UploadTab>
+                </div>
+            </ContentTemplate>
+        </TabItem>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="補算重傳" IconCss="e-icons e-repeat"></TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <div class="m-3">
+                    <Recalculate></Recalculate>
+                </div>
+            </ContentTemplate>
+        </TabItem>
+    </TabItems>
+</SfTab>
+
+@code {
+
+}

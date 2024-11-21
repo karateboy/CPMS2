@@ -1,0 +1,23 @@
+1. Download Sqlpackage.exe
+https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-download?view=sql-server-ver16
+
+2. Install by .Net SDK
+dotnet tool install -g microsoft.sqlpackage
+
+3. Execute publish.bat
+SqlPackage.exe /Action:Publish /SourceFile:"D:\Release\database.dacpac" /TargetConnectionString:"Data Source=localhost;Initial Catalog=DAHS2;Integrated Security=True;TrustServerCertificate=true;"
+
+4. cd Dash2Blazor
+
+5. dotnet ef database update
+
+6. Update dotnet tool to latest version
+dotnet tool update --global dotnet-ef
+
+7. Install dotnet-ef
+dotnet tool install --global dotnet-ef
+
+8. Execute publish
+Release\publish
+
+9. Test rebase

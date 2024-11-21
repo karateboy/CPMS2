@@ -1,0 +1,78 @@
+﻿@page "/"
+@inject PipeIo PipeIo
+@inject DataCollectManager DataCollectManager
+<PageTitle>@Title</PageTitle>
+
+@using Syncfusion.Blazor.Navigations
+@using Dahs2BlazorApp.Models
+
+<SfTab>
+    <TabAnimationSettings>
+        <TabAnimationPrevious Effect=AnimationEffect.FadeZoomIn></TabAnimationPrevious>
+        <TabAnimationNext Effect=AnimationEffect.FadeZoomIn></TabAnimationNext>
+    </TabAnimationSettings>
+    <TabItems>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="即時數據" IconCss="e-icons e-kpi"> </TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <Main></Main>
+            </ContentTemplate>
+        </TabItem>
+        @foreach (var pipe in PipeIo.Pipes)
+        {
+            <TabItem>
+                <ChildContent>
+                    <TabHeader Text="@GetPipeCemsTitle(pipe.Id)" IconCss="e-icons e-bullet-4"></TabHeader>
+                </ChildContent>
+                <ContentTemplate>
+                    <PipeCemsStateContrl PipeId="@pipe.Id"></PipeCemsStateContrl>
+                </ContentTemplate>
+            </TabItem>
+            <TabItem>
+                <ChildContent>
+                    <TabHeader Text="@GetPipePemsTitle(pipe.Id)" IconCss="e-icons e-bullet-4"></TabHeader>
+                </ChildContent>
+                <ContentTemplate>
+                    <PipePemsStateContrl PipeId="@pipe.Id"></PipePemsStateContrl>
+                </ContentTemplate>
+            </TabItem>
+        }
+
+    </TabItems>
+</SfTab>
+
+@code {
+    private const string Title = "儀錶板";
+    private Timer? _timer;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _timer = new Timer(_ => { InvokeAsync(StateHasChanged); }, 
+                new AutoResetEvent(false), 0, 2000); // fire every 2000 milliseconds
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
+    string GetCurrentLoad(int pipeId) => PipeIo.PipeMap[pipeId].CurrentLoad?.ToString() ?? "-";
+
+    string GetConvertedLoad(int pipeId)
+    {
+        var currentLoad = PipeIo.PipeMap[pipeId].CurrentLoad;
+        return currentLoad != null ? DataCollectManager.GetConvertedLoad(currentLoad.Value).ToString("F2") : "-";
+    }
+
+    string GetPipeCemsTitle(int pipeId) => $"{PipeIo.PipeMap[pipeId].Name}固定汙染源";
+    
+    string GetPipePemsTitle(int pipeId) => $"{PipeIo.PipeMap[pipeId].Name}污染防治";
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+
+}

@@ -1,0 +1,107 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Dahs2BlazorApp.Models
+@using Syncfusion.Blazor.Calendars
+@inject SysConfigIo SysConfigIo
+
+<PageTitle>@Title</PageTitle>
+<EditForm Model="@_model" OnValidSubmit="OnValidSubmit" class="w-75">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="UploadPath">上傳路徑</label>
+        <div class="col-md-10">
+            <InputText Id="UploadPath" class="form-control" @bind-Value="_model.UploadPath"/>
+            <ValidationMessage For="@(() => _model.UploadPath)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="LoadDataPath">LoadData路徑</label>
+        <div class="col-md-10">
+            <InputText Id="LoadDataPath" class="form-control" @bind-Value="_model.LoadDataPath"/>
+            <ValidationMessage For="@(() => _model.LoadDataPath)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 col-form-label" for="ModbusDataPath">ModbusData路徑</label>
+        <div class="col-md-10">
+            <InputText Id="ModbusDataPath" class="form-control" @bind-Value="_model.ModbusDataPath"/>
+            <ValidationMessage For="@(() => _model.ModbusDataPath)"/>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 form-check-label" for="TestUpload">測試上傳</label>
+        <div class="col-md-10">
+            <InputCheckbox Id="TestUpload" @bind-Value="_model.IsTestUpload" DisplayName="測試上傳" class="form-check-input"></InputCheckbox>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 form-check-label" for="TestUpload">日報上傳時間</label>
+        <div class="col-md-10">
+            <SfTimePicker TValue="TimeOnly" @bind-Value="@_model.LawUploadTime" Step=60 Format="HH:mm"></SfTimePicker>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="offset-md-1">
+            <button type="submit" class="btn btn-success">更新</button>
+        </div>
+    </div>
+
+</EditForm>
+
+@code {
+        private const string Title = "上傳設定";
+
+    [CascadingParameter]
+    SfToast? ToastObj { get; set; }
+
+    public class UploadModel
+    {
+        [Required(ErrorMessage = "上傳路徑不能是空的")]
+        public string UploadPath { get; set; } = string.Empty;
+
+        public string LoadDataPath { get; set; } = string.Empty;
+        
+        public string ModbusDataPath { get; set; } = string.Empty;
+        
+        public bool IsTestUpload { get; set; } = true;
+
+        public TimeOnly LawUploadTime { get; set; } = new TimeOnly(17, 0, 0);
+    }
+
+    private UploadModel _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _model = new()
+        {
+            UploadPath = await SysConfigIo.GetUploadPath(),
+            LoadDataPath = await SysConfigIo.GetLoadDataPath(),
+            ModbusDataPath = await SysConfigIo.GetModbusDataPath(),
+            IsTestUpload = await SysConfigIo.GetTestUpload(),
+            LawUploadTime = await SysConfigIo.GetLawUploadTime()
+        };
+    }
+
+    private async Task OnValidSubmit()
+    {
+        await SysConfigIo.SetUploadPath(_model.UploadPath);
+        await SysConfigIo.SetLoadDataPath(_model.LoadDataPath);
+        await SysConfigIo.SetModbusDataPath(_model.ModbusDataPath);
+        await SysConfigIo.SetTestUpload(_model.IsTestUpload);
+        await SysConfigIo.SetLawUploadTime(_model.LawUploadTime);
+        
+        EpaUploadSetting.UploadFolder = _model.UploadPath;
+        EpaUploadSetting.IsTestUpload = _model.IsTestUpload;
+        if (ToastObj != null)
+        {
+            await ToastObj.ShowAsync(new ToastModel
+            {
+                CssClass = "e-toast-success",
+                Content = "更新成功"
+            });
+        }
+    }
+
+}

@@ -1,0 +1,25 @@
+﻿@page "/Config/Device"
+@using Syncfusion.Blazor.Navigations
+
+<SfTab>
+    <TabAnimationSettings>
+        <TabAnimationPrevious Effect=AnimationEffect.FadeZoomIn></TabAnimationPrevious>
+        <TabAnimationNext Effect=AnimationEffect.FadeZoomIn></TabAnimationNext>
+    </TabAnimationSettings>
+    <TabItems>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="設備通信設定" IconCss="e-icons e-settings"> </TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <div class="m-3">
+                    <DeviceConfigTab></DeviceConfigTab>
+                </div>
+            </ContentTemplate>
+        </TabItem>
+    </TabItems>
+</SfTab>
+
+@code {
+
+}

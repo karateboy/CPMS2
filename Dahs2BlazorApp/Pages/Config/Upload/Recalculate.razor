@@ -1,0 +1,156 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Dahs2BlazorApp.Models
+@using Syncfusion.Blazor.Calendars
+@using Syncfusion.Blazor.ProgressBar
+@using Syncfusion.Blazor.Buttons
+@inject DataCollectManager DataCollectManager
+@inject ILogger<Recalculate> Logger
+@inject AlarmIo AlarmIo
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
+
+<PageTitle>@Title</PageTitle>
+<EditForm Model="@_model" OnValidSubmit="OnValidSubmit" class="w-75">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    <div class="row mb-3">
+        <label class="col-md-2 form-check-label" for="Recalculation">重新計算修正資料</label>
+        <div class="col-md-10">
+            <InputCheckbox Id="Recalculation" @bind-Value="@_model.Recalculation"
+                           DisplayName="停電、未開機等狀況"
+                           class="form-check-input">
+            </InputCheckbox>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 form-check-label" for="Upload">上傳資料到環保局</label>
+        <div class="col-md-10">
+            <InputCheckbox Id="Upload" @bind-Value="@_model.Upload"
+                           DisplayName="預設上傳"
+                           class="form-check-input">
+            </InputCheckbox>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2 form-check-label" for="ReUpload">重傳資料</label>
+        <div class="col-md-10">
+            <InputCheckbox Id="ReUpload" @bind-Value="@_model.ReUpload"
+                           DisplayName="重傳需經環保局核可"
+                           class="form-check-input">
+            </InputCheckbox>
+        </div>
+    </div>
+    <div class="row mb-1">
+        <label class="col-md-2 col-form-label" for="Start">開始時間</label>
+        <div class="col-md-10">
+            <SfDateTimePicker ID="Start" Format="yyyy-MM-dd HH:mm" TValue="DateTime?" @bind-Value="@_model.Start"></SfDateTimePicker>
+        </div>
+    </div>
+    <div class="row mb-1">
+        <label class="col-md-2 col-form-label" for="End">結束時間(不含)</label>
+        <div class="col-md-10">
+            <SfDateTimePicker ID="End" Format="yyyy-MM-dd HH:mm" TValue="DateTime?" @bind-Value="@_model.End"></SfDateTimePicker>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="offset-md-1">
+            <button type="submit" class="btn btn-success">確定</button>
+        </div>
+    </div>
+</EditForm>
+
+@if (_showProgressBar)
+{
+    <div class="mt-3 p-3 shadow border text-center">
+        <SfProgressBar Type="ProgressType.Linear" 
+                       Height="30px" 
+                       Width="100%" 
+                       Value="@_progressValue" 
+                       Minimum="0" Maximum="100"
+                       ShowProgressValue="true">
+        </SfProgressBar>
+        <br/>
+        <h4>補算:@_recalculateTime</h4>
+        <SfButton CssClass="e-primary" @onclick="OnCancel">取消</SfButton>
+    </div>
+}
+
+@code {
+    string Title { get; set; } = "補算重傳";
+
+    [CascadingParameter]
+    SfToast? ToastObj { get; set; }
+
+    public class UploadModel
+    {
+        public bool Recalculation { get; set; }
+        public bool Upload { get; set; } = true;
+        public bool ReUpload { get; set; }
+
+        [Required(ErrorMessage = "請選擇開始時間")]
+        public DateTime? Start { get; set; } = DateTime.Today.AddDays(-1);
+
+        [Required(ErrorMessage = "請選擇結束時間(不含)")]
+        public DateTime? End { get; set; } = DateTime.Now.AddMinutes(1);
+    }
+
+    private UploadModel _model = new();
+
+    bool _showProgressBar = false;
+    int _progressValue = 10;
+    DateTime _recalculateTime = DateTime.Now;
+    CancellationTokenSource _cancellationTokenSource = new();
+    private async Task OnValidSubmit()
+    {
+        _progressValue = 0;
+        _recalculateTime = _model.Start!.Value;
+        _showProgressBar = true;
+        if(_model.Start is null || _model.End is null)
+        {
+            ToastObj?.ShowAsync(new ToastModel()
+            {
+                Title = "錯誤",
+                Content = "請選擇開始時間與結束時間",
+                CssClass = "e-toast-danger",
+                Icon = "e-error toast-icons"
+            });
+            return;
+        }
+        
+        var authenticationState = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+        _ = AlarmIo.AddAlarm(AlarmIo.AlarmLevel.Info, $"使用者{authenticationState.User.Identity?.Name}> 重新計算({_model.Start:d}~{_model.End:d})");
+
+        _ = DataCollectManager.Recalculate(_model.Start.Value, 
+            _model.End.Value, 
+            _model.Recalculation, 
+            _model.Upload, 
+            _model.ReUpload, 
+            new Progress<(int, DateTime)>((update) =>
+            {
+                _progressValue = update.Item1;
+                _recalculateTime = update.Item2;
+
+                if (update.Item1 == 100)
+                {
+                    ToastObj?.ShowAsync(new ToastModel()
+                    {
+                        Title = "完成",
+                        Content = "補算重傳完成",
+                        CssClass = "e-toast-success",
+                        Icon = "e-success toast-icons"
+                    });
+                    Logger.LogInformation("補算重傳完成");
+                    _showProgressBar = false;
+                }
+                    
+                StateHasChanged();
+            }),
+            _cancellationTokenSource.Token);
+    }
+
+    void OnCancel()
+    {
+        _cancellationTokenSource.Cancel();
+        _showProgressBar = false;
+    }
+
+}

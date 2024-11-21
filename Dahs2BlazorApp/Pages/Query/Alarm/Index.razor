@@ -1,0 +1,124 @@
+﻿@page "/query/alarm"
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Calendars
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.Blazor.Navigations
+@inject AlarmIo AlarmIo
+
+<PageTitle>@Title</PageTitle>
+<div class="row g-0">
+    <div class="col-lg-6 col-md-8 col-sm-12">
+        <div class="card border m-3 shadow">
+            <h4 class="card-header text-center text-white bg-primary bg-gradient">@Title</h4>
+            <div class="card-body">
+                <EditForm Model="@_model" OnValidSubmit="OnValidSubmit">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="AlarmLevel">警報等級</label>
+                        <div class="col-md-10">
+                            <SfDropDownList ID="AlarmLevel" TValue="AlarmIo.AlarmLevel" TItem="AlarmIo.AlarmLevelDisplay" @bind-value="@_model.Level"
+                                            DataSource="@AlarmIo.AlarmLevelDisplayList">
+                                <DropDownListFieldSettings Value="Level" Text="Display"></DropDownListFieldSettings>
+                            </SfDropDownList>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="DateRange">查詢範圍</label>
+                        <div class="col-md-10">
+                            <SfDateRangePicker ID="DateRange" TValue="DateTime" @bind-StartDate="@_model.Start" EndDate="@_model.End"></SfDateRangePicker>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <div class="col-md-6 text-center">
+                            <button type="submit" class="btn btn-success btn-sm">查詢</button>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+<br/>
+@if (DisplayReport)
+{
+    <SfGrid ID="report"
+            @ref="Grid"
+            AllowPaging="true"
+            DataSource="_alarmList"
+            Toolbar="@(new List<string> { "ExcelExport" })"
+            AllowExcelExport="true"
+            AllowSorting="true">
+        <GridEvents TValue="AlarmIo.Alarm" OnToolbarClick="ToolbarClickHandler"></GridEvents>
+        <GridColumns>
+            <GridColumn
+                Field="@nameof(AlarmIo.Alarm.Id)"
+                HeaderText="ID"
+                TextAlign="TextAlign.Left" AutoFit="true"
+                IsPrimaryKey="true"
+                Visible="false">
+            </GridColumn>
+            <GridColumn
+                Field="@nameof(AlarmIo.Alarm.CreateDate)"
+                HeaderText="警報時間"
+                TextAlign="TextAlign.Left" AutoFit="true"
+                Visible="true">
+            </GridColumn>
+            <GridColumn
+                Field="@nameof(AlarmIo.Alarm.LevelDisplay)"
+                HeaderText="等級"
+                TextAlign="TextAlign.Left" AutoFit="true"
+                Visible="true">
+            </GridColumn>
+            <GridColumn
+                Field="@nameof(AlarmIo.Alarm.Message)"
+                HeaderText="訊息"
+                TextAlign="TextAlign.Left"
+                AutoFit="true">
+            </GridColumn>
+        </GridColumns>
+    </SfGrid>
+}
+
+
+@code {
+    private const string Title = "警報查詢";
+    private bool DisplayReport { get; set; }
+
+    SfGrid<AlarmIo.Alarm>? Grid;
+
+    public class QueryModel
+    {
+        [Required(ErrorMessage = "請選擇等級")] public AlarmIo.AlarmLevel Level { get; set; } = AlarmIo.AlarmLevel.Error;
+
+        [Required(ErrorMessage = "請選擇開始日期")] public DateTime Start { get; set; } = DateTime.Today;
+
+        [Required(ErrorMessage = "請選擇結束日期(不含)")]
+        public DateTime End { get; set; } = DateTime.Today.AddDays(1);
+    }
+
+    private readonly QueryModel _model = new();
+
+
+    List<AlarmIo.Alarm> _alarmList = new();
+
+
+    async Task OnValidSubmit()
+    {
+        var result = await AlarmIo.GetAlarm(_model.Level, _model.Start, _model.End);
+        DisplayReport = true;
+        _alarmList = result.ToList();
+        Grid?.Refresh();
+    }
+
+    private async void ToolbarClickHandler(ClickEventArgs args)
+    {
+        if (!args.Item.Id.EndsWith("excelexport")) return;
+        var excelExportProperties = new ExcelExportProperties
+        {
+            FileName = $"警報資料{_model.Start:yyyyMMdd}_{_model.End:MMdd}.xlsx"
+        };
+        if (Grid != null) await Grid.ExportToExcelAsync(excelExportProperties);
+    }
+
+}
