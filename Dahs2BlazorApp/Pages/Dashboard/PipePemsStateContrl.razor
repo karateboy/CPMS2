@@ -98,7 +98,34 @@
         </div>
     </div>
 </div>
-
+<div class="row match-height g-0">
+    <div class="col-lg-3 col-md-6 col-sm-12 ">
+        <div class="card border m-2 text-center shadow">
+            <h4 class="card-header text-white bg-primary bg-gradient">設定全設備狀態</h4>
+            <div class="card-body">
+                <table class="text-center">
+                    <tbody>
+                    <tr class="align-text-top">
+                        <td><h6>目標狀態:</h6></td>
+                        <td>
+                            <SfDropDownList ID="All__OverrideState"
+                                            @bind-Value="@TargetState"
+                                            TItem="MonitorTypeStateModel"
+                                            TValue="string"
+                                            DataSource="@MonitorTypeState.OverrideStates">
+                                <DropDownListFieldSettings Value="Code" Text="Name"></DropDownListFieldSettings>
+                            </SfDropDownList>
+                        </td>
+                        <td>
+                            <SfButton CssClass="e-outline" Disabled="!canSwitchState" @onclick="SwitchStage">設定</SfButton>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 <style>
     .match-height {
       > [class*='col'] {
@@ -123,6 +150,29 @@
     string Title => $"{PipeIo.PipeMap[PipeId].Name}狀態設定";
 
     bool _canChangeState = false;
+    string? TargetState { get; set; } = MonitorTypeState.States[0].Code;
+    bool canSwitchState => _canChangeState && !string.IsNullOrEmpty(TargetState);
+
+    async Task SwitchStage()
+    {
+        Logger.LogInformation("Update all MonitorType to {State}", TargetState);
+        var authenticationState = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+        _ = AlarmIo.AddAlarm(AlarmIo.AlarmLevel.Info, $"使用者{authenticationState.User.Identity?.Name}> 切換全場設施狀態=> {TargetState}");
+        var clone = ActiveMonitorTypes.ToList();
+        foreach (var mt in clone)
+        {
+            mt.OverrideState = TargetState ?? mt.OverrideState;
+            await MonitorTypeIo.UpsertMonitorType(mt);
+        }
+        ActiveMonitorTypes = clone;
+        
+        if (ToastObj != null)
+            await ToastObj.ShowAsync(new ToastModel
+            {
+                CssClass = "e-toast-success",
+                Content = "更新成功"
+            });
+    }
 
     List<MonitorTypeTab.MonitorTypeViewModel> ActiveMonitorTypes { get; set; } = new();
 

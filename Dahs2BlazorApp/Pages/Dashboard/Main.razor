@@ -1,10 +1,8 @@
-﻿@using Syncfusion.Blazor.Cards
-@inject PipeIo PipeIo
+﻿@inject PipeIo PipeIo
 @inject MonitorTypeIo MonitorTypeIo
 @inject DataCollectManager DataCollectManager
 @inject MeasuringAdjust MeasuringAdjust
 @using Dahs2BlazorApp.Models
-@using NuGet.Protocol
 @implements IDisposable
 <div class="container-fluid">
     <div class="row g-1">
@@ -16,13 +14,13 @@
                     <table class="table text-center m-1">
                         <thead>
                         <tr class="widget-header bg-gradient">
-                            <th class="p-1">@($"{pipe.Name} - {mt.Name}")</th>
+                            <th class="p-1">@($"{mt.Name}")</th>
                         </tr>
                         <tr class="widget-raw">
-                            <th class="p-1">@FormatValue(GetPipeRawRecord(pipe.Id, mt.Sid))</th>
+                            <th class="p-1">@FormatValue(GetPipeRawRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit</th>
                         </tr>
                         <tr class="widget-adjusted">
-                            <th>@FormatValue(GetPipeAdjustedRecord(pipe.Id, mt.Sid))</th>
+                            <th>@FormatValue(GetPipeAdjustedRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit2 <br/>@GetNormalRange(pipe.Id, mt.Sid)&nbsp;</th>
                         </tr>
 
                         </thead>
@@ -34,29 +32,29 @@
                     </table>
                 </div>
             }
+        }
+    </div>
+    <div class="row g-1">
+        @foreach (var pipe in PipeIo.Pipes)
             @foreach (var mt in GetPemsMonitorTypes(pipe.Id))
-            {
-                <div class="col-xl-2 col-lg-2 col-md-3 col-sm-12">
-                    <table class="table text-center m-1">
-                        <thead>
-                        <tr class="widget-header bg-gradient">
-                            <th class="p-1">@($"{pipe.Name} - {mt.Name}")</th>
-                        </tr>
-                        <tr class="widget-raw">
-                            <th class="p-1">@FormatValue(GetPipeRawRecord(pipe.Id, mt.Sid))</th>
-                        </tr>
-                        <tr class="widget-adjusted">
-                            <th> - </th>
-                        </tr>
-                        </thead>
-                        <tbody class="widget-state">
-                        <tr class="@($"{GetPipeRawRecord(pipe.Id, mt.Sid).ToRecordStatus().ToBlinkCss()}")">
-                            <td class="pt-1">@FormatStatus(GetPipeRawRecord(pipe.Id, mt.Sid))</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            }
+        {
+            <div class="col-xl-2 col-lg-2 col-md-3 col-sm-12">
+                <table class="table text-center m-1">
+                    <thead>
+                    <tr class="widget-header bg-gradient">
+                        <th class="p-1">@($"{mt.Name}")</th>
+                    </tr>
+                    <tr class="widget-raw">
+                        <th class="p-1">@FormatValue(GetPipeRawRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit <br/>@GetNormalRange(pipe.Id, mt.Sid)&nbsp;</th>
+                    </tr>
+                    </thead>
+                    <tbody class="widget-state">
+                    <tr class="@($"{GetPipeRawRecord(pipe.Id, mt.Sid).ToRecordStatus().ToBlinkCss()}")">
+                        <td class="pt-1">@FormatStatus(GetPipeRawRecord(pipe.Id, mt.Sid))</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         }
         @if (_playAlert)
         {
@@ -72,49 +70,53 @@
         color: white;
         font-size: medium;
     }
-    .widget-raw {        
+
+    .widget-raw {
         background-color: black;
         color: white;
-        font-size: medium;            
+        font-size: medium;
     }
+
     .widget-adjusted {
         background-color: black;
         color: limegreen;
         font-size: large;
         font-weight: bolder;
     }
-            
+
     .widget-state {
-        background: linear-gradient(to bottom,  rgba(180,227,145,1) 0%,rgba(97,196,25,1) 50%,rgba(180,227,145,1) 100%);
-        color: black;
+        background: black;
+        color: white;
         font-size: small;
         font-weight: bolder;
     }
-    
+
     .e-card {
         /* Permalink - use to edit and share this gradient: https://colorzilla.com/gradient-editor/#b4e391+0,61c419+50,b4e391+100;Green+3D */
-        background: linear-gradient(to bottom,  rgba(180,227,145,1) 0%,rgba(97,196,25,1) 50%,rgba(180,227,145,1) 100%);
+        background: linear-gradient(to bottom, rgba(180, 227, 145, 1) 0%, rgba(97, 196, 25, 1) 50%, rgba(180, 227, 145, 1) 100%);
         padding: 0 5px 5px 5px;
         margin: 5px;
         font-size: 13px;
     }
 
     .e-card .e-card-header {
-            padding-top: 5px;
-            font-family: sans-serif;
-            font-weight: bolder;
+        padding-top: 5px;
+        font-family: sans-serif;
+        font-weight: bolder;
     }
-        
+
     .e-card .e-card-content {
-            font-size: 13px;
-            color: rgb(128,128,128);
-            line-height: initial;
-            font-weight: normal;
+        font-size: 13px;
+        color: rgb(128, 128, 128);
+        line-height: initial;
+        font-weight: normal;
     }
+
     .match-height .col {
         display: flex;
-        flex-flow: column;      
+        flex-flow: column;
     }
+
     .match-height .col > div {
         flex: 1;
     }
@@ -133,15 +135,15 @@
         var cems = PipeIo.Pipes.Any(pipe => MonitorTypeIo.GetCemsMonitorTypes(pipe.Id)
             .Select(mt => GetPipeAdjustedRecord(pipe.Id, mt.Sid)
                 .ToRecordStatus())
-            .Any(recordStatus => recordStatus is Helper.RecordStatus.Abnormal 
+            .Any(recordStatus => recordStatus is Helper.RecordStatus.Abnormal
                 or Helper.RecordStatus.OverRange or Helper.RecordStatus.Fixing));
 
         var pems = PipeIo.Pipes.Any(pipe => MonitorTypeIo.GetPemsMonitorTypes(pipe.Id)
             .Select(mt => GetPipeRawRecord(pipe.Id, mt.Sid)
                 .ToRecordStatus())
-            .Any(recordStatus => recordStatus is Helper.RecordStatus.Abnormal 
+            .Any(recordStatus => recordStatus is Helper.RecordStatus.Abnormal
                 or Helper.RecordStatus.OverRange or Helper.RecordStatus.Fixing));
-        
+
         return cems || pems;
     }
 
@@ -150,7 +152,7 @@
         var skipMonitorTypes = new List<string> { "A231", "A232" };
         return MonitorTypeIo.GetCemsMonitorTypes(pipeId).Where(mt => !skipMonitorTypes.Contains(mt.Sid)).ToList();
     }
-    
+
     private List<IMonitorType> GetPemsMonitorTypes(int pipeId)
     {
         return MonitorTypeIo.GetPemsMonitorTypes(pipeId).ToList();
@@ -230,7 +232,7 @@
 
         return record.Value.HasValue ? $"{record.Value:F2}" : "-";
     }
-    
+
     string FormatStatus(Record? record)
     {
         if (record is null)
@@ -247,6 +249,20 @@
         return currentLoad != null ? DataCollectManager.GetConvertedLoad(currentLoad.Value).ToString("F2") : "-";
     }
 
+    string GetNormalRange(int pipeId, string sid)
+    {
+        var mt = MonitorTypeIo.PipeMonitorTypeMap[pipeId][sid];
+        if(mt is { Alarm: not null, AlarmLow: not null })
+            return $"{mt.AlarmLow:F2} ~ {mt.Alarm:F2}";
+        
+        if(mt is {Alarm: not null})
+            return $"< {mt.Alarm:F2}";
+        
+        if(mt is {AlarmLow: not null})
+            return $"> {mt.AlarmLow:F2}";
+        
+        return "";
+    }
 
     public void Dispose()
     {

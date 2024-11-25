@@ -183,6 +183,10 @@ public static class SiteConfig
         return value < 0 ? 0 : value;
     }
 
+    private static readonly CalculateFunction A23Calculation = new(
+        new List<string> { "A231", "A232" },
+        values => GetGteZero(values[0]) + GetGteZero(values[1]));
+
     public static readonly Dictionary<int, List<TypeDefinition>> PipeMonitorTypes =
         new()
         {
@@ -207,6 +211,13 @@ public static class SiteConfig
                         RangeMin: 0m,
                         RangeMax: 500m,
                         AdjustFactor: new AdjustFactor(false, true)
+                    ),
+                    new(
+                        Sid: MonitorTypeCode.A23,
+                        RangeMin: 0m,
+                        RangeMax: 1000m,
+                        AdjustFactor: new AdjustFactor(false, true),
+                        Calculation: A23Calculation
                     ),
                     new(
                         Sid: MonitorTypeCode.A22,
