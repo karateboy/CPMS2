@@ -87,7 +87,7 @@ builder.Services.AddSingleton<DataCollectManager>();
 builder.Services.AddSingleton<RecordIo>();
 builder.Services.AddSingleton<AlarmIo>();
 builder.Services.AddSingleton<ISyncfusionStringLocalizer, SyncfusionLocalizer>();
-
+builder.Services.AddHttpClient<ILineNotify, LineNotify>();
 builder.Services.AddHostedService<BootTask>();
 builder.Services.AddHostedService<DataCollectManager>(p => p.GetRequiredService<DataCollectManager>());
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");

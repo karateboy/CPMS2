@@ -1,16 +1,9 @@
-﻿using System.Collections;
-using Dahs2BlazorApp.Configuration;
+﻿using Dahs2BlazorApp.Configuration;
 using Dahs2BlazorApp.Db;
 using System.Collections.Concurrent;
-using System.Collections.Specialized;
 using System.Diagnostics;
-using System.Text;
 using HslCommunication;
 using HslCommunication.Profinet.Melsec;
-using IniParser;
-using IniParser.Model;
-using Microsoft.IdentityModel.Tokens;
-using NPOI.HSSF.Record;
 using Record = Dahs2BlazorApp.Db.Record;
 
 namespace Dahs2BlazorApp.Models;
@@ -21,41 +14,35 @@ public partial class DataCollectManager : IHostedService, IDisposable
     private readonly RecordIo _recordIo;
     private readonly MonitorTypeIo _monitorTypeIo;
     private readonly DeviceIo _deviceIo;
-    private readonly DeviceMeasuringIo _deviceMeasuringIo;
-    private readonly DeviceSignalIo _deviceSignalIo;
     private readonly MeasuringAdjust _measuringAdjust;
-    private readonly SysConfigIo _sysConfigIo;
     private readonly AlarmIo _alarmIo;
     private readonly PipeIo _pipeIo;
     private readonly DeviceOutputIo _deviceOutputIo;
     private readonly SiteInfoIo _siteInfoIo;
+    private readonly ILineNotify _lineNotify;
 
     public DataCollectManager(ILogger<DataCollectManager> logger,
         RecordIo recordIo,
         MonitorTypeIo monitorTypeIo,
         DeviceIo deviceIo,
-        DeviceMeasuringIo deviceMeasuringIo,
-        DeviceSignalIo deviceSignalIo,
         MeasuringAdjust measuringAdjust,
-        SysConfigIo sysConfigIo,
         AlarmIo alarmIo,
         PipeIo pipeIo,
         DeviceOutputIo deviceOutputIo,
-        SiteInfoIo siteInfoIo
+        SiteInfoIo siteInfoIo,
+        ILineNotify lineNotify
     )
     {
         _logger = logger;
         _recordIo = recordIo;
         _monitorTypeIo = monitorTypeIo;
         _deviceIo = deviceIo;
-        _deviceMeasuringIo = deviceMeasuringIo;
-        _deviceSignalIo = deviceSignalIo;
         _measuringAdjust = measuringAdjust;
-        _sysConfigIo = sysConfigIo;
         _alarmIo = alarmIo;
         _pipeIo = pipeIo;
         _deviceOutputIo = deviceOutputIo;
         _siteInfoIo = siteInfoIo;
+        _lineNotify = lineNotify;
     }
 
     private static string UpdateInvalidReason(int pipeId, string mt, string code, string reason)
@@ -81,7 +68,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
             return UpdateInvalidReason(pipeId, mt, "32", "儀器斷線");
 
         // 是否手動切換狀態
-        if (string.IsNullOrEmpty(monitorType.OverrideState) == false)
+        if (string.IsNullOrEmpty(monitorType.OverrideState) == false && monitorType.OverrideState != "10")
             return UpdateInvalidReason(pipeId, mt, monitorType.OverrideState, "手動切換");
 
         if (monitorType.Standard.HasValue && value.Value > monitorType.Standard.Value)
@@ -202,7 +189,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
             OutputAdjustValues(pipeId, adjustRecordMap);
 
             var adjustCreateDate = createDate.AddMinutes(-1);
-            if (adjustCreateDate.Second == 0 && adjustCreateDate.Minute % 5 == 0)
+            if (adjustCreateDate.Second == 0)
             {
                 await _measuringAdjust.CalculateFix1Min(pipeId, adjustCreateDate);
                 GenerateAlarms(pipeId, adjustCreateDate, rawRecordMap);
@@ -398,6 +385,12 @@ public partial class DataCollectManager : IHostedService, IDisposable
             {
                 result1 = await plc.ReadUInt32Async("W20", 1);
             } while (result.IsSuccess == false && count++ < 3);
+            if(result1.IsSuccess == false)
+            {
+                _logger.LogWarning("ReadMitsubishiPLC failed");
+                return;
+            }
+            
             UpdateRecord(MonitorTypeCode.WashTowerPressDiff, result1.Content[0] / 10m);
 
             OperateResult<uint[]> result2;

@@ -36,7 +36,7 @@ public enum MonitorTypeCode
     BlowerSpeed4,
     EmExit,
     WashTowerPressDiff,
-    PH,
+    PH
 }
 
 public record TypeInfo(string Name, string Unit, string Unit1);
@@ -186,7 +186,7 @@ public static class SiteConfig
     private static readonly CalculateFunction A23Calculation = new(
         new List<string> { "A231", "A232" },
         values => GetGteZero(values[0]) + GetGteZero(values[1]));
-
+    
     public static readonly Dictionary<int, List<TypeDefinition>> PipeMonitorTypes =
         new()
         {
@@ -198,7 +198,7 @@ public static class SiteConfig
                         Sid: MonitorTypeCode.A26,
                         RangeMin: 0m,
                         RangeMax: 500m,
-                        AdjustFactor: new AdjustFactor(false, false)
+                        AdjustFactor: new AdjustFactor(false, true)
                     ),
                     new(
                         Sid: MonitorTypeCode.A231,
@@ -287,7 +287,6 @@ public static class SiteConfig
                         AdjustFactor: new AdjustFactor(false, false)),
                     new(Sid: MonitorTypeCode.WashFlow, RangeMin: 0m, RangeMax: 300m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    
                     new(Sid: MonitorTypeCode.WaterQuantity, RangeMin: 0m, RangeMax: 300m,
                         AdjustFactor: new AdjustFactor(false, false)),
                     new(Sid: MonitorTypeCode.BlowerSpeed, RangeMin: 0m, RangeMax: 300m,
@@ -309,7 +308,7 @@ public static class SiteConfig
                     new(Sid: MonitorTypeCode.WashTowerPressDiff, RangeMin: 0m, RangeMax: 300m,
                         AdjustFactor: new AdjustFactor(false, false)),
                     new(Sid: MonitorTypeCode.PH, RangeMin: 0m, RangeMax: 300m,
-                        AdjustFactor: new AdjustFactor(false, false)),
+                        AdjustFactor: new AdjustFactor(false, false))
                 }
             },
         };

@@ -361,16 +361,10 @@ public class MeasuringAdjust
 
             decimal dF48 = typeDef.CheckRange(record.Value.GetValueOrDefault(0));
 
-            record.Value = Helper.GetFlowFixValue(false,
-                true,
-                dF48,
-                dWater.GetValueOrDefault(0),
-                pipe.LastNormalTemp,
-                pipe.Area,
-                record.Baf.GetValueOrDefault(1),
-                flowOzoneFactor.Value);
+            record.Value = dF48 * pipe.Area * 60; 
             item.CheckOverStatus(record);
         }
+        
 
         foreach (var sid in mtList
                      .Where(sid => sid != "E36" && sid != "F48" && sid != "T59"))

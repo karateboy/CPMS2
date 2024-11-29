@@ -136,4 +136,13 @@ public class SysConfigIo
         return GetSysConfig(ModbusDataPathKey);
     }
     
+    private const string LineTokenKey = "LineToken";
+    public Task SetLineToken(string token)
+    {
+        return UpsertSysConfig(new SysConfig(LineTokenKey, token));
+    }
+    public Task<string> GetLineToken()
+    {
+        return GetSysConfig(LineTokenKey);
+    }
 }
