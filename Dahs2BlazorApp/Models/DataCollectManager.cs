@@ -172,22 +172,21 @@ public partial class DataCollectManager : IHostedService, IDisposable
             var rawRecordMap = GenerateRecordMap(pipeId, createDate, monitorTypes, deviceRecordMap);
 
             var water = rawRecordMap[MonitorTypeCode.W00.ToString()].Value ?? 10m;
-            if (createDate.Second == 0 && createDate.Minute % 5 == 0)
+            if (createDate.Second == 0)
             {
                 await _recordIo.InsertRawData(pipeId, createDate, water, rawRecordMap);
+                rawRecordMap.Add("Water",
+                    new Record
+                    {
+                        Value = water,
+                        Status = "10",
+                        Baf = 1
+                    });
+                var adjustRecordMap = _measuringAdjust.Get1MinAdjustedData(pipeId, createDate,
+                    monitorTypes, new() { { createDate, rawRecordMap } }, false);
+                OutputAdjustValues(pipeId, adjustRecordMap);
             }
-
-            rawRecordMap.Add("Water",
-                new Record
-                {
-                    Value = water,
-                    Status = "10",
-                    Baf = 1
-                });
-            var adjustRecordMap = _measuringAdjust.Get1MinAdjustedData(pipeId, createDate,
-                monitorTypes, new() { { createDate, rawRecordMap } }, false);
-            OutputAdjustValues(pipeId, adjustRecordMap);
-
+            
             var adjustCreateDate = createDate.AddMinutes(-1);
             if (adjustCreateDate.Second == 0)
             {
