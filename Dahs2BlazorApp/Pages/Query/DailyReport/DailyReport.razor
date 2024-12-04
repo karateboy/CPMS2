@@ -1,0 +1,97 @@
+﻿@using Syncfusion.Blazor.Cards
+@using Syncfusion.Blazor.Calendars
+@using Syncfusion.Blazor.SplitButtons
+@using System.ComponentModel.DataAnnotations
+@using Dahs2BlazorApp.Models
+@inject PipeIo PipeIo
+@inject MonitorTypeIo MonitorTypeIo
+@inject ILogger<DailyReport> Logger
+@inject ExcelUtility ExcelUtility
+@inject RecordIo RecordIo
+@inject IJSRuntime JsRuntime
+
+<PageTitle>@Title</PageTitle>
+<div class="row g-0">
+    <div class="col-lg-6 col-md-8 col-sm-12">
+        <SfCard>
+            <CardContent>
+                <EditForm Model="@_model" OnValidSubmit="OnValidSubmit">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="Pipe">煙道</label>
+                        <div class="col-md-10">
+                            <SfDropDownList ID="Pipe" TValue="int" TItem="IPipe" @bind-value="@_model.PipeId"
+                                            DataSource="@PipeIo.Pipes">
+                                <DropDownListFieldSettings Value="Id" Text="Name"></DropDownListFieldSettings>
+                            </SfDropDownList>
+                            <ValidationMessage For="@(() => _model.PipeId)"/>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="DateStart">查詢日期</label>
+                        <div class="col-md-10">
+                            <SfDatePicker TValue="DateTime" ID="DateStart" @bind-Value="@_model.Start" Max="DateTime.Today"></SfDatePicker>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <div class="offset-md-2">
+                            <SfProgressButton Content="下載" IsPrimary="true">
+                                <ProgressButtonSpinSettings Position="SpinPosition.Right" Width="20"></ProgressButtonSpinSettings>
+                            </SfProgressButton>
+                        </div>
+                    </div>
+                </EditForm>
+            </CardContent>
+        </SfCard>
+    </div>
+</div>
+<br/>
+
+@code {
+    private const string Title = "日報查詢";
+
+    [CascadingParameter] SfToast? ToastObj { get; set; }
+
+    public class QueryModel
+    {
+        [Required(ErrorMessage = "請選擇煙道")] public int PipeId { get; set; }
+
+        [Required(ErrorMessage = "請選擇日期")] public required DateTime Start { get; set; }
+    }
+
+    private readonly QueryModel _model = new()
+    {
+        PipeId = SiteConfig.DefaultPipes[0].Id,
+        Start = DateTime.Today.AddDays(-1)
+    };
+
+    async void OnValidSubmit()
+    {
+        try
+        {
+            var mtList = MonitorTypeIo.GetMonitorTypeSids(1);
+            var dailyRecord = await RecordIo.GetData(TableType.AdjustedData60, 1, mtList ,_model.Start, _model.Start.AddDays(1));
+            var excel =
+                ExcelUtility.ExportDailyReport(_model.Start, dailyRecord);
+            Logger.LogDebug("excel path: {Excel}", excel);
+            var streamRef = new DotNetStreamReference(stream: File.OpenRead(excel));
+            var fileName = $"{_model.Start:yyyyMMdd}_小時平均日報表.xlsx";
+            await JsRuntime.InvokeVoidAsync("downloadStream", fileName, streamRef);
+        }
+        catch (Exception ex)
+        {
+            ToastObj?.ShowAsync(new ToastModel
+            {
+                Title = "錯誤",
+                Content = $"查詢失敗 {ex.Message}",
+                CssClass = "e-toast-danger",
+                Icon = "e-error toast-icons"
+            });
+
+            Logger.LogError(ex, "Fail to get daily report");
+        }
+    }
+
+
+}

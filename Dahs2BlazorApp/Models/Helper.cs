@@ -109,11 +109,20 @@ public static class Helper
         Other,
     }
 
-    public static RecordStatus ToRecordStatus(this Record? record)
+    public static RecordStatus ToRecordStatus(this Record? record, IMonitorType mt)
     {
-        if (record is null)
+        if (record?.Value is null)
             return RecordStatus.Abnormal;
 
+        if (record.Status == "00")
+        {
+            if(mt.Alarm.HasValue && record.Value > mt.Alarm)
+                return RecordStatus.OverRange;
+            
+            if(mt.AlarmLow.HasValue && record.Value < mt.AlarmLow)
+                return RecordStatus.OverRange;
+        } 
+        
         return record.Status switch
         {
             "00" => RecordStatus.Normal,

@@ -89,12 +89,6 @@ public record TypeDefinition(
 {
     public decimal CheckRange(decimal value)
     {
-        if (value <= RangeMin)
-            return RangeMin;
-
-        if (value >= RangeMax)
-            return RangeMax;
-
         return value;
     }
 }
@@ -277,37 +271,37 @@ public static class SiteConfig
                         AdjustFactor: new AdjustFactor(false, false),
                         Multiplier: decimal.Divide(50m, 65535m)
                     ),
-                    new(Sid: MonitorTypeCode.SecondTemp, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.SecondTemp, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BFTemp, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.BFTemp, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BFPressDiff, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.BFPressDiff, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BFWeightMod, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.BFWeightMod, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.WashFlow, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.WashFlow, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.WaterQuantity, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.WaterQuantity, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BlowerSpeed, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.BlowerSpeed, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.OpTemp, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.OpTemp, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BurnerTemp, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.BurnerTemp, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BlowerSpeed1, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.BlowerSpeed1, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BlowerSpeed2, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.BlowerSpeed2, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BlowerSpeed3, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.BlowerSpeed3, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BlowerSpeed4, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.BlowerSpeed4, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.EmExit, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.EmExit, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.WashTowerPressDiff, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.WashTowerPressDiff, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.PH, RangeMin: 0m, RangeMax: 300m,
+                    new(Sid: MonitorTypeCode.PH, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false))
                 }
             },

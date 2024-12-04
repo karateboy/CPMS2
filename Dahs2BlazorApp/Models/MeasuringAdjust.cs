@@ -242,27 +242,25 @@ public class MeasuringAdjust
                 {
                     foreach (string sid in mtList.Where(sid => !recordMap.ContainsKey(sid)))
                     {
-                        string status = "32";
-                        var record = new Record
+                        const string status = "32";
+                        
+                        recordMap.Add(sid, new Record
                         {
                             Value = null,
                             Status = status,
                             Baf = 1.0m
-                        };
-                        recordMap.Add(sid, record);
+                        });
                     }
                 }
 
-                if (!recordMap.ContainsKey("Water"))
+                if (recordMap.ContainsKey("Water")) continue;
+                
+                recordMap.Add("Water", new Record
                 {
-                    var record = new Record
-                    {
-                        Value = null,
-                        Status = "NA10",
-                        Baf = 1.0m
-                    };
-                    recordMap.Add("Water", record);
-                }
+                    Value = null,
+                    Status = "10",
+                    Baf = 1.0m
+                });
             }
 
             return result;

@@ -123,7 +123,7 @@
                         <td>@mt.Name</td>
                         <td>@FormatValue(GetPipeRawRecord(PipeId, mt.Sid))</td>
                         <td>@FormatValue(adjustedRecord)</td>
-                        <td class="@($"ps-1 {GetPipeAdjustedRecord(PipeId, mt.Sid).ToRecordStatus().ToCss()}")">
+                        <td class="@($"ps-1 {GetPipeAdjustedRecord(PipeId, mt.Sid).ToRecordStatus(mt).ToCss()}")">
                             <strong>@FormatStatus(adjustedRecord)</strong>
                         </td>
                     </tr>

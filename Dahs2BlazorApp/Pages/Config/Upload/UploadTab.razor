@@ -15,7 +15,7 @@
             <ValidationMessage For="@(() => _model.UploadPath)"/>
         </div>
     </div>
-    <div class="row mb-3">
+    @*<div class="row mb-3">
         <label class="col-md-2 col-form-label" for="LoadDataPath">LoadData路徑</label>
         <div class="col-md-10">
             <InputText Id="LoadDataPath" class="form-control" @bind-Value="_model.LoadDataPath"/>
@@ -34,13 +34,13 @@
         <div class="col-md-10">
             <InputCheckbox Id="TestUpload" @bind-Value="_model.IsTestUpload" DisplayName="測試上傳" class="form-check-input"></InputCheckbox>
         </div>
-    </div>
-    <div class="row mb-3">
+    </div>*@
+    @*<div class="row mb-3">
         <label class="col-md-2 form-check-label" for="TestUpload">日報上傳時間</label>
         <div class="col-md-10">
             <SfTimePicker TValue="TimeOnly" @bind-Value="@_model.LawUploadTime" Step=60 Format="HH:mm"></SfTimePicker>
         </div>
-    </div>
+    </div>*@
     <div class="row mb-3">
         <div class="offset-md-1">
             <button type="submit" class="btn btn-success">更新</button>

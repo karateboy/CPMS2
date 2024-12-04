@@ -293,7 +293,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
         string convertValue(string mt, Record record)
         {
             if(mt == "F48")
-                return record.Value.HasValue ? (record.Value.Value * 0.74m * 60).ToString("F2") : "";
+                return record.Value.HasValue ? (record.Value.Value * 5).ToString("F2") : "";
             
             return record.Value.HasValue ? record.Value.Value.ToString("F2") : "";
         }
@@ -301,7 +301,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
         string convertHourValue(string mt, Record record)
         {
             if(mt == "F48")
-                return record.Value.HasValue ? (record.Value.Value * 0.74m * 3600).ToString("F2") : "";
+                return record.Value.HasValue ? (record.Value.Value * 60).ToString("F2") : "";
             
             return record.Value.HasValue ? record.Value.Value.ToString("F2") : "";
         }
@@ -359,16 +359,16 @@ public partial class DataCollectManager : IHostedService, IDisposable
 
             if (result.IsSuccess == false)
             {
-                _logger.LogWarning("ReadMitsubishiPLC failed");
+                _logger.LogDebug("ReadMitsubishiPLC failed");
                 return;
             }
 
             UpdateRecord(MonitorTypeCode.SecondTemp, result.Content[0]);
             UpdateRecord(MonitorTypeCode.BFTemp, result.Content[1]);
-            UpdateRecord(MonitorTypeCode.BFPressDiff, result.Content[2] / 10m);
-            UpdateRecord(MonitorTypeCode.BFWeightMod, result.Content[3] / 10m);
+            UpdateRecord(MonitorTypeCode.BFPressDiff, decimal.Divide(result.Content[2], 10m));
+            UpdateRecord(MonitorTypeCode.BFWeightMod, decimal.Divide(result.Content[3],10m));
             UpdateRecord(MonitorTypeCode.WashFlow, result.Content[4]);
-            UpdateRecord(MonitorTypeCode.PH, result.Content[5] / 100m);
+            UpdateRecord(MonitorTypeCode.PH, decimal.Divide(result.Content[5], 100));
             UpdateRecord(MonitorTypeCode.BlowerSpeed, result.Content[7]);
             UpdateRecord(MonitorTypeCode.OpTemp, result.Content[8]);
             UpdateRecord(MonitorTypeCode.BurnerTemp, result.Content[9]);
@@ -386,11 +386,11 @@ public partial class DataCollectManager : IHostedService, IDisposable
             } while (result.IsSuccess == false && count++ < 3);
             if(result1.IsSuccess == false)
             {
-                _logger.LogWarning("ReadMitsubishiPLC failed");
+                _logger.LogDebug("ReadMitsubishiPLC failed");
                 return;
             }
             
-            UpdateRecord(MonitorTypeCode.WashTowerPressDiff, result1.Content[0] / 10m);
+            UpdateRecord(MonitorTypeCode.WashTowerPressDiff, decimal.Divide(result1.Content[0], 10));
 
             OperateResult<uint[]> result2;
             count = 0;
@@ -401,7 +401,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
 
             if (result2.IsSuccess == false)
             {
-                _logger.LogWarning("ReadMitsubishiPLC failed");
+                _logger.LogDebug("ReadMitsubishiPLC failed");
                 return;
             }
 
@@ -409,7 +409,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "ReadMitsubishiPLC failed");
+            _logger.LogDebug(ex, "ReadMitsubishiPLC failed");
         }
         finally
         {
@@ -478,8 +478,8 @@ public partial class DataCollectManager : IHostedService, IDisposable
                     foreach (var pipeId in pipeIds)
                     {
                         if (!update) continue;
-                        if (current.Minute % 5 == 0)
-                            await _measuringAdjust.CalculateFix1Min(pipeId, current);
+                        
+                        await _measuringAdjust.CalculateFix1Min(pipeId, current);
 
                         if (current.Minute == 0)
                             await _measuringAdjust.UpsertAdjustHour(pipeId, current);

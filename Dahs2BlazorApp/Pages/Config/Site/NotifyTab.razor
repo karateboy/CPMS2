@@ -1,0 +1,86 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Dahs2BlazorApp.Models
+@inject SysConfigIo SysConfigIo
+@inject ILogger<NotifyTab> Logger
+@inject ILineNotify LineNotify
+
+<PageTitle>@Title</PageTitle>
+
+<EditForm Model="@_model" OnValidSubmit="OnValidSubmit" class="w-75">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    <div class="row mb-4">
+        <label class="col-md-2 col-form-label" for="Name">LINE Token</label>
+        <div class="col-md-5">
+            <InputText Id="Name" class="form-control" @bind-Value="_model.LineToken"/>
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-info" @onclick="TestLine">測試</button>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="offset-md-1">
+            <button type="submit" class="btn btn-success">更新</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private const string Title = "LINE 通報";
+
+    [CascadingParameter] SfToast? ToastObj { get; set; }
+
+    private class Model
+    {
+        public string LineToken { get; set; } = string.Empty;
+    }
+
+    private Model _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _model.LineToken = await SysConfigIo.GetLineToken();
+    }
+
+    private async Task OnValidSubmit()
+    {
+        Logger.LogInformation("Submit called: Processing the form");
+        await SysConfigIo.SetLineToken(_model.LineToken);
+
+        if (ToastObj != null)
+            await ToastObj.ShowAsync(new ToastModel
+            {
+                CssClass = "e-toast-success",
+                Content = "更新成功"
+            });
+    }
+
+    private async Task TestLine()
+    {
+        Logger.LogInformation("TestLine called: Testing the line token");
+        if (ToastObj != null)
+        {
+            try
+            {
+                await LineNotify.Notify(_model.LineToken, "發送測試訊息");
+                await ToastObj.ShowAsync(new ToastModel
+                {
+                    CssClass = "e-toast-success",
+                    Content = "LINE 測試成功"
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "TestLine: Failed to send test message");
+                await ToastObj.ShowAsync(new ToastModel
+                {
+                    CssClass = "e-toast-danger",
+                    Content = "測試失敗"
+                });
+            }
+        }
+    }
+
+}

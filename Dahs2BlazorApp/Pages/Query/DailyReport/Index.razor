@@ -1,0 +1,25 @@
+﻿@page "/query/dailyReport"
+
+@using Syncfusion.Blazor.Navigations
+<SfTab>
+    <TabAnimationSettings>
+        <TabAnimationPrevious Effect=AnimationEffect.FadeZoomIn></TabAnimationPrevious>
+        <TabAnimationNext Effect=AnimationEffect.FadeZoomIn></TabAnimationNext>
+    </TabAnimationSettings>
+    <TabItems>
+        <TabItem>
+            <ChildContent>
+                <TabHeader Text="小時平均日報表" IconCss="e-icons e-check"> </TabHeader>
+            </ChildContent>
+            <ContentTemplate>
+                <div class="m-3">
+                    <DailyReport></DailyReport>
+                </div>
+            </ContentTemplate>
+        </TabItem>
+    </TabItems>
+</SfTab>
+
+@code {
+
+}
