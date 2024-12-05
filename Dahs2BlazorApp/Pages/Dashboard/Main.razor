@@ -4,58 +4,54 @@
 @inject MeasuringAdjust MeasuringAdjust
 @using Dahs2BlazorApp.Models
 @implements IDisposable
-<div class="container-fluid">
-    <div class="row g-1">
+<div class="p-3">
+    <table class="table table-bordered table-striped table-hover table-sm shadow">
+        <thead>
+        <tr>
+            <th class="text-center">測項</th>
+            <th class="text-center">原始值</th>
+            <th class="text-center">修正值</th>
+            <th class="text-center">排放標準</th>
+            <th class="text-center">範圍</th>
+            <th class="text-center">狀態</th>
+        </tr>
+        </thead>
+        <tbody>
         @foreach (var pipe in PipeIo.Pipes)
         {
             @foreach (var mt in GetCemsMonitorTypes(pipe.Id))
             {
-                <div class="col-xl-2 col-lg-2 col-md-3 col-sm-12">
-                    <table class="table text-center m-1">
-                        <thead>
-                        <tr class="widget-header bg-gradient">
-                            <th class="p-1">@($"{mt.Name}")</th>
-                        </tr>
-                        <tr class="widget-raw">
-                            <th class="p-1">@FormatValue(GetPipeRawRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit</th>
-                        </tr>
-                        <tr class="widget-adjusted">
-                            <th>@FormatValue(GetPipeAdjustedRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit2 <br/>@GetNormalRange(pipe.Id, mt.Sid)&nbsp;</th>
-                        </tr>
-
-                        </thead>
-                        <tbody class="widget-state">
-                        <tr class="@($"{GetPipeAdjustedRecord(pipe.Id, mt.Sid).ToRecordStatus(mt).ToBlinkCss()}")">
-                            <td class="pt-1">@FormatStatus(GetPipeAdjustedRecord(pipe.Id, mt.Sid))</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <tr>
+                    <th>@($"{mt.Name}")</th>
+                    <td class="@($"{GetPipeRawRecord(pipe.Id, mt.Sid).ToRecordStatus(mt).ToBlinkCss()}")">
+                        @FormatValue(mt.Sid, GetPipeRawRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit
+                    </td>
+                    <td class="@($"{GetPipeAdjustedRecord(pipe.Id, mt.Sid).ToRecordStatus(mt).ToBlinkCss()}")">
+                        @FormatValue(mt.Sid, GetPipeAdjustedRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit2
+                    </td>
+                    <td>@mt.Standard</td>
+                    <td>@GetNormalRange(pipe.Id, mt.Sid)</td>
+                    <td>@FormatStatus(GetPipeAdjustedRecord(pipe.Id, mt.Sid))</td>
+                </tr>
+            }
+            @foreach (var mt in GetPemsMonitorTypes(pipe.Id))
+            {
+                <tr>
+                    <th>@($"{mt.Name}")</th>
+                    <td class="@($"{GetPipeRawRecord(pipe.Id, mt.Sid).ToRecordStatus(mt).ToBlinkCss()}")">
+                        @FormatValue(mt.Sid, GetPipeRawRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit
+                    </td>
+                    <td></td>
+                    <td>@mt.Standard</td>
+                    <td>@GetNormalRange(pipe.Id, mt.Sid)</td>
+                    <td>@FormatStatus(GetPipeRawRecord(pipe.Id, mt.Sid))</td>
+                </tr>
             }
         }
-    </div>
+        </tbody>
+    </table>
+    <br/>
     <div class="row g-1">
-        @foreach (var pipe in PipeIo.Pipes)
-            @foreach (var mt in GetPemsMonitorTypes(pipe.Id))
-        {
-            <div class="col-xl-2 col-lg-2 col-md-3 col-sm-12">
-                <table class="table text-center m-1">
-                    <thead>
-                    <tr class="widget-header bg-gradient">
-                        <th class="p-1">@($"{mt.Name}")</th>
-                    </tr>
-                    <tr class="widget-raw">
-                        <th class="p-1">@FormatValue(GetPipeRawRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit <br/>@GetNormalRange(pipe.Id, mt.Sid)&nbsp;</th>
-                    </tr>
-                    </thead>
-                    <tbody class="widget-state">
-                    <tr class="@($"{GetPipeRawRecord(pipe.Id, mt.Sid).ToRecordStatus(mt).ToBlinkCss()}")">
-                        <td class="pt-1">@FormatStatus(GetPipeRawRecord(pipe.Id, mt.Sid))</td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-        }
         @if (_playAlert)
         {
             <audio autoplay loop>
@@ -155,7 +151,15 @@
 
     private List<IMonitorType> GetPemsMonitorTypes(int pipeId)
     {
-        return MonitorTypeIo.GetPemsMonitorTypes(pipeId).ToList();
+        var skipMonitorTypes = new List<string>
+        {
+            MonitorTypeCode.BlowerSpeed1.ToString(),
+            MonitorTypeCode.BlowerSpeed2.ToString(),
+            MonitorTypeCode.BlowerSpeed3.ToString(),
+            MonitorTypeCode.BlowerSpeed4.ToString(),
+        };
+        return MonitorTypeIo.GetPemsMonitorTypes(pipeId)
+            .Where(mt=>!skipMonitorTypes.Contains(mt.Sid)).ToList();
     }
 
     protected override void OnAfterRender(bool firstRender)
@@ -225,12 +229,19 @@
         return null;
     }
 
-    string FormatValue(Record? record)
+    string FormatValue(string sid, Record? record)
     {
-        if (record is null)
+        if (record?.Value is null)
             return "-";
 
-        return record.Value.HasValue ? $"{record.Value:F2}" : "-";
+        switch (sid)
+        {
+            case "EmExit":
+                return record.Value == 0m ? "關閉" : "開啟";
+                
+            default:
+                return $"{record.Value:F2}";        
+        }
     }
 
     string FormatStatus(Record? record)
@@ -252,15 +263,15 @@
     string GetNormalRange(int pipeId, string sid)
     {
         var mt = MonitorTypeIo.PipeMonitorTypeMap[pipeId][sid];
-        if(mt is { Alarm: not null, AlarmLow: not null })
+        if (mt is { Alarm: not null, AlarmLow: not null })
             return $"{mt.AlarmLow:F2} ~ {mt.Alarm:F2}";
-        
-        if(mt is {Alarm: not null})
+
+        if (mt is { Alarm: not null })
             return $"< {mt.Alarm:F2}";
-        
-        if(mt is {AlarmLow: not null})
+
+        if (mt is { AlarmLow: not null })
             return $"> {mt.AlarmLow:F2}";
-        
+
         return "";
     }
 
