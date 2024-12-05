@@ -114,7 +114,7 @@ public static class Helper
         if (record?.Value is null)
             return RecordStatus.Abnormal;
 
-        if (record.Status == "00")
+        if (record.Status == "10")
         {
             if(mt.Alarm.HasValue && record.Value > mt.Alarm)
                 return RecordStatus.OverRange;

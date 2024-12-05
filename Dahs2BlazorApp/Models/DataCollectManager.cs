@@ -338,6 +338,36 @@ public partial class DataCollectManager : IHostedService, IDisposable
         _ = Task.Run(ReadMitsubishiPLC, cancellationToken);
     }
 
+    private async Task ReadFakePLC()
+    {
+        UpdateRecord(MonitorTypeCode.SecondTemp, 1);
+        UpdateRecord(MonitorTypeCode.BFTemp, 2);
+        UpdateRecord(MonitorTypeCode.BFPressDiff, decimal.Divide(4, 10m));
+        UpdateRecord(MonitorTypeCode.BFWeightMod, decimal.Divide(4,10m));
+        UpdateRecord(MonitorTypeCode.WashFlow, 5);
+        UpdateRecord(MonitorTypeCode.PH, decimal.Divide(6, 100));
+        UpdateRecord(MonitorTypeCode.BlowerSpeed, 7);
+        UpdateRecord(MonitorTypeCode.OpTemp, 8);
+        UpdateRecord(MonitorTypeCode.BurnerTemp, 9);
+        UpdateRecord(MonitorTypeCode.BlowerSpeed1, 10);
+        UpdateRecord(MonitorTypeCode.BlowerSpeed2, 11);
+        UpdateRecord(MonitorTypeCode.BlowerSpeed3, 12);
+        UpdateRecord(MonitorTypeCode.BlowerSpeed4, 13);
+        UpdateRecord(MonitorTypeCode.EmExit, 14); 
+        
+        void UpdateRecord(MonitorTypeCode mtc, decimal value)
+        {
+            const int pipeId = 1;
+            const int deviceId = 100;
+            UpdatePipeMonitorTypeMap(pipeId, deviceId, mtc.ToString(),
+                new Record
+                {
+                    Value = value,
+                    Status = _monitorTypeIo.PipeMonitorTypeMap[pipeId][mtc.ToString()].OverrideState,
+                    Baf = 1
+                });
+        }
+    }
     private async Task ReadMitsubishiPLC()
     {
         _logger.LogDebug("ReadMitsubishiPLC");
