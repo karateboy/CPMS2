@@ -1,6 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
-using Dahs2BlazorApp.Configuration;
+﻿using Dahs2BlazorApp.Configuration;
 using Dahs2BlazorApp.Db;
 using Serilog;
 
@@ -39,6 +37,16 @@ public class MeasuringAdjust
                 MidpointRounding.AwayFromZero);
     }
 
+    private static decimal? GetSum(IEnumerable<Record> values)
+    {
+        var nonemptyValues = values.Where(record => record.Value.HasValue).ToList();
+        if (nonemptyValues.Count == 0)
+            return null;
+        else
+            return Math.Round(nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).Sum(), 2,
+                MidpointRounding.AwayFromZero);
+    }
+
     private static string GetMaxCountKey(IReadOnlyDictionary<string, int> dataStateCountMap, string[] order)
     {
         return dataStateCountMap.OrderByDescending(kv => kv.Value).ThenBy(kv =>
@@ -46,6 +54,59 @@ public class MeasuringAdjust
             int idx = Array.IndexOf(order, kv.Key);
             return idx >= 0 ? idx : order.Length;
         }).Select(kv => kv.Key).First();
+    }
+
+    private string[] accumulativeMonitorTypes = { "WaterQuantity", "BFWeightMod" };
+
+    private Dictionary<string, Record> Calculate5MinData(int pipeId,
+        IReadOnlyDictionary<DateTime, Dictionary<string, Record>> timeRecordMap)
+    {
+        Dictionary<string, Record> ret = new Dictionary<string, Record>();
+
+        foreach (var sid in _monitorTypeIo.GetMonitorTypeSids(pipeId))
+        {
+            var records = timeRecordMap.Values.Select(map => map[sid]).ToList();
+
+            if (records.Count == 0)
+            {
+                var record = new Record
+                {
+                    Value = null,
+                    Status = "32"
+                };
+                ret.Add(sid, record);
+                continue;
+            }
+
+
+            var status = records.GroupBy(record => record.Status)
+                .OrderByDescending(pair => pair.Count()).First().Key;
+
+            ret.Add(sid, new Record
+            {
+                Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
+                Status = status
+            });
+        }
+
+        return ret;
+    }
+
+
+    public async Task<Dictionary<DateTime, Dictionary<string, Record>>> Get5MinData(int pipeId, DateTime start, DateTime end)
+    {
+        var timeRecordMap = await _recordIo.GetData(TableType.AdjustedData, pipeId,
+            _monitorTypeIo.GetMonitorTypeSids(pipeId), start, end);
+
+        var result = new Dictionary<DateTime, Dictionary<string, Record>>();
+        foreach (var dt in Helper.GetTimeSeries(start, end, TimeSpan.FromMinutes(5)))
+        {
+            var oneMinDataMap = timeRecordMap.Where(kv => kv.Key >= dt && kv.Key < dt.AddMinutes(5))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            result.Add(dt, Calculate5MinData(pipeId, oneMinDataMap));
+        }
+
+        return result;
     }
 
     private Dictionary<string, Record> CalculateHourData(int pipeId,
@@ -58,170 +119,96 @@ public class MeasuringAdjust
             // determine the status of the record
             if (records.Count < 12 || records.Exists(record => record.Status.EndsWith("32")))
             {
-                var record = new Record
+                ret.Add(sid, new Record
                 {
-                    Value = GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
                     Status = "32"
-                };
-                ret.Add(sid, record);
+                });
                 continue;
             }
 
             if (records.Exists(record => record.Status.EndsWith("20")))
             {
-                var record = new Record
+                ret.Add(sid, new Record
                 {
-                    Value = GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
                     Status = "20"
-                };
-                ret.Add(sid, record);
+                });
                 continue;
             }
 
             if (records.Exists(record => record.Status.EndsWith("31")))
             {
-                var record = new Record
+                ret.Add(sid, new Record
                 {
-                    Value = GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
                     Status = "31"
-                };
-                ret.Add(sid, record);
+                });
                 continue;
             }
 
             if (records.Exists(record => record.Status.EndsWith("30")))
             {
-                var record = new Record
+                ret.Add(sid, new Record
                 {
-                    Value = GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
                     Status = "30"
-                };
-                ret.Add(sid, record);
+                });
                 continue;
             }
 
+            var normalRecords = records.Where(record => !record.Status.EndsWith("00"));
             if (records.Exists(record => record.Status.EndsWith("01")))
             {
-                var record = new Record
+                ret.Add(sid, new Record
                 {
-                    Value = GetAvg(records.Where(record => !record.Status.EndsWith("00"))),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(normalRecords) : GetAvg(normalRecords),
                     Status = "01"
-                };
-                ret.Add(sid, record);
+                });
                 continue;
             }
 
             if (records.Exists(record => record.Status.EndsWith("02")))
             {
-                var record = new Record
+                ret.Add(sid, new Record
                 {
-                    Value = GetAvg(records.Where(record => !record.Status.EndsWith("00"))),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(normalRecords) : GetAvg(normalRecords),
                     Status = "02"
-                };
-                ret.Add(sid, record);
+                });
                 continue;
             }
 
             if (records.All(record => record.Status.EndsWith("00")))
             {
-                var record = new Record
+                ret.Add(sid, new Record
                 {
-                    Value = GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
                     Status = "00"
-                };
-                ret.Add(sid, record);
+                });
                 continue;
             }
 
             if (records.Exists(record => record.Status.EndsWith("10")))
             {
-                var record = new Record
+                ret.Add(sid, new Record
                 {
-                    Value = GetAvg(records.Where(record => !record.Status.EndsWith("00"))),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(normalRecords) : GetAvg(normalRecords),
                     Status = "10"
-                };
-                ret.Add(sid, record);
+                });
                 continue;
             }
 
+
+            ret.Add(sid, new Record
             {
-                var record = new Record
-                {
-                    Value = GetAvg(records.Where(record => !record.Status.EndsWith("00"))),
-                    Status = "11"
-                };
-                ret.Add(sid, record);
-            }
+                Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(normalRecords) : GetAvg(normalRecords),
+                Status = "11"
+            });
         }
 
         return ret;
     }
 
-    private Record CalculateOp6Data(int pipeId, IDictionary<DateTime, Record> timeRecordMap)
-    {
-        Dictionary<char, int> opStateCountMap = new Dictionary<char, int>();
-        Dictionary<char, int> equipStateCountMap = new Dictionary<char, int>();
-        Dictionary<string, int> dataStateCountMap = new Dictionary<string, int>();
-        List<Record> recordList = timeRecordMap.Values.ToList();
-        foreach (var record in recordList)
-        {
-            UpdateMapCount(opStateCountMap, record.Status[0]);
-            UpdateMapCount(equipStateCountMap, record.Status[1]);
-
-            // 20220622 狀態碼記數若有尾數11替換10，給後續計算使用。 humboldt start
-            UpdateMapCount(dataStateCountMap, record.Status.Substring(2, 2).Replace("11", "10"));
-            continue;
-            // 20220622 end
-
-            void UpdateMapCount<T>(Dictionary<T, int> map, T key) where T : notnull
-            {
-                if (map.ContainsKey(key))
-                    map[key] += 1;
-                else
-                    map[key] = 1;
-            }
-        }
-
-        var opState = opStateCountMap.OrderByDescending(kv => kv.Value).Select(kv => kv.Key).First();
-        var equipState = equipStateCountMap.OrderByDescending(kv => kv.Value).Select(kv => kv.Key).First();
-
-        (string dataState, decimal? avg) = GetDataStateAvg();
-        return new Record
-        {
-            Value = avg,
-            Status = $"{opState}{equipState}{dataState}"
-        };
-
-        (string, decimal?) GetDataStateAvg()
-        {
-            dataStateCountMap.TryGetValue("30", out int count30);
-            dataStateCountMap.TryGetValue("40", out int count40);
-            if (count30 + count40 >= 10)
-            {
-                return count30 >= count40 ? ("30", GetAvg(recordList)) : ("40", GetAvg(recordList));
-            }
-
-            string maxCountKey = GetMaxCountKey(dataStateCountMap,
-                new[] { "21", "20", "31", "32", "01", "02", "03", "30", "40", "11", "10" });
-
-            if (maxCountKey != "10" && maxCountKey != "11")
-            {
-                return maxCountKey == "40"
-                    ? (maxCountKey, null)
-                    : (maxCountKey, GetAvg(recordList.Where(record => record.Status.EndsWith(maxCountKey)).ToList()));
-            }
-            else
-            {
-                decimal? valueAvg = GetAvg(recordList.Where(record =>
-                    record.Status.EndsWith("10") || record.Status.EndsWith("11")).ToList());
-                var item = _monitorTypeIo.PipeMonitorTypeMap[pipeId]["G11"];
-                if (item.Standard is not null && valueAvg > item.Standard)
-                    return ("11", valueAvg);
-
-                return ("10", valueAvg);
-            }
-        }
-    }
 
     private async Task<Dictionary<DateTime, Dictionary<string, Record>>> GetRaw1MinData(int pipeId, List<string> mtList,
         DateTime start, DateTime end)
@@ -243,7 +230,7 @@ public class MeasuringAdjust
                     foreach (string sid in mtList.Where(sid => !recordMap.ContainsKey(sid)))
                     {
                         const string status = "32";
-                        
+
                         recordMap.Add(sid, new Record
                         {
                             Value = null,
@@ -254,7 +241,7 @@ public class MeasuringAdjust
                 }
 
                 if (recordMap.ContainsKey("Water")) continue;
-                
+
                 recordMap.Add("Water", new Record
                 {
                     Value = null,
@@ -277,6 +264,11 @@ public class MeasuringAdjust
             List<string> mtList,
             Dictionary<DateTime, Dictionary<string, Record>> rawTimeDataMap, bool updatePipe = true)
     {
+        if (!rawTimeDataMap.ContainsKey(start))
+        {
+            Log.Error("Get1MinAdjustedData {PipeId} {Start} not found", pipeId, start);
+        }
+
         var rawDataMap = rawTimeDataMap[start];
         decimal? dWater = null;
         if (rawDataMap.TryGetValue("Water", out var waterRecord))
@@ -290,7 +282,7 @@ public class MeasuringAdjust
         var result = new Dictionary<string, Record>();
 
         decimal? ozoneFactor;
-        decimal? flowOzoneFactor;
+
         var pipe = _pipeIo.PipeMap[pipeId];
         // O2 first calculator
         if (rawDataMap.TryGetValue("E36", out var e36Record))
@@ -303,10 +295,10 @@ public class MeasuringAdjust
 
             pipe.LastNormalOzone = e36Record.Value.GetValueOrDefault(0);
             pipe.NormalOzoneTime = start;
-            // 判斷數位 / 類比，如為數位，不需要限制最大範圍
+
             decimal rawO2 = e36Record.Value.GetValueOrDefault(0);
             decimal dO2 = typeDef.CheckRange(rawO2);
-            (e36Record.Value, ozoneFactor, flowOzoneFactor) =
+            (e36Record.Value, ozoneFactor, _) =
                 Helper.GetFixOzone(
                     typeDef.AdjustFactor.Water, dO2,
                     dWater.GetValueOrDefault(0),
@@ -324,7 +316,7 @@ public class MeasuringAdjust
         }
         else
         {
-            (_, ozoneFactor, flowOzoneFactor) =
+            (_, ozoneFactor, _) =
                 Helper.GetFixOzone(
                     true, pipe.LastNormalOzone,
                     dWater.GetValueOrDefault(0),
@@ -359,10 +351,10 @@ public class MeasuringAdjust
 
             decimal dF48 = typeDef.CheckRange(record.Value.GetValueOrDefault(0));
 
-            record.Value = dF48 * pipe.Area * 60; 
+            record.Value = dF48 * pipe.Area * 60;
             item.CheckOverStatus(record);
         }
-        
+
 
         foreach (var sid in mtList
                      .Where(sid => sid != "E36" && sid != "F48" && sid != "T59"))
@@ -370,22 +362,64 @@ public class MeasuringAdjust
             var record = rawDataMap[sid];
             var item = _monitorTypeIo.PipeMonitorTypeMap[pipeId][sid];
             var typeDef = SiteConfig.PipeMonitorTypeMap[pipeId][sid];
-            if (record.Value.HasValue)
+            switch (sid)
             {
-                record.Value = typeDef.CheckRange(record.Value.GetValueOrDefault());
-                record.Value = Helper.GetOtherFixValue(sid,
-                    typeDef.AdjustFactor.O2,
-                    typeDef.AdjustFactor.Water,
-                    record.Value.GetValueOrDefault(),
-                    dWater.GetValueOrDefault(),
-                    record.Baf.GetValueOrDefault(1),
-                    ozoneFactor.Value);
-                item.CheckOverStatus(record);
+                // accumulative MonitorType
+                case "WaterQuantity":
+                case "BFWeightMod":
+                    if (rawTimeDataMap.TryGetValue(start.AddMinutes(-1), out var rawLast1MinDataMap) &&
+                        rawLast1MinDataMap.TryGetValue(sid, out var prevRecord))
+                    {
+                        if (prevRecord.Value.HasValue)
+                        {
+                            switch (sid)
+                            {
+                                case "WaterQuantity":
+                                    record.Value -= prevRecord.Value;
+                                    break;
+                                case "BFWeightMod":
+                                    record.Value = prevRecord.Value - record.Value;
+                                    break;
+                            }
+
+                            if (record.Value < 0)
+                                record.Value = 0;
+                        }
+                        else
+                        {
+                            record.Value = null;
+                        }
+                    }
+                    else
+                    {
+                        record.Value = 0m;
+                    }
+
+                    break;
+
+                default:
+                    if (record.Value.HasValue)
+                    {
+                        record.Value = typeDef.CheckRange(record.Value.GetValueOrDefault());
+                        record.Value = Helper.GetOtherFixValue(sid,
+                            typeDef.AdjustFactor.O2,
+                            typeDef.AdjustFactor.Water,
+                            record.Value.GetValueOrDefault(),
+                            dWater.GetValueOrDefault(),
+                            record.Baf.GetValueOrDefault(1),
+                            ozoneFactor.Value);
+                        item.CheckOverStatus(record);
+                    }
+                    else
+                    {
+                        record.Value = null;
+                    }
+
+                    break;
             }
-            else
-            {
-                record.Value = null;
-            }
+
+
+            //Take care accumulative MonitorType
 
             result.Add(sid, record);
         }
@@ -627,7 +661,8 @@ public class MeasuringAdjust
             List<string> mtList = _monitorTypeIo.PipeMonitorTypeMap[pipeId].Values.Select(mt => mt.Sid)
                 .ToList();
 
-            var rawTimeDataMap = await GetRaw1MinData(pipeId, mtList, createDate, createDate.AddMinutes(1));
+            var rawTimeDataMap =
+                await GetRaw1MinData(pipeId, mtList, createDate.AddMinutes(-1), createDate.AddMinutes(1));
             var recordMap = Get1MinAdjustedData(pipeId, createDate, mtList, rawTimeDataMap);
 
             if (updateDb)
@@ -660,11 +695,8 @@ public class MeasuringAdjust
             if (target.Minute != 0)
                 return new Dictionary<string, Record>();
 
-            var mtList = _monitorTypeIo.GetMonitorTypeSids(pipeId);
-
             var hourRecordMap = CalculateHourData(pipeId,
-                await _recordIo.GetData(TableType.AdjustedData, pipeId, mtList, target.AddHours(-1).AddMinutes(1),
-                    target.AddMinutes(1)));
+                await Get5MinData(pipeId, target.AddHours(-1), target.AddMinutes(1)));
             await _recordIo.UpsertData(TableType.AdjustedData60, pipeId, target, hourRecordMap);
             return hourRecordMap;
         }

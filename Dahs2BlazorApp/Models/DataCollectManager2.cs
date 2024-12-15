@@ -11,6 +11,7 @@ public partial class DataCollectManager
     private readonly ConcurrentDictionary<MonitorTypeKey, string> _monitorTypeStatusMap = new();
 
     private bool emExitOpen = false;
+    private DateTime emExitLastOpenTime = DateTime.MaxValue;
 
     private void GenerateAlarms(int pipeId, DateTime createDate, IReadOnlyDictionary<string, Record> recordMap)
     {
@@ -60,8 +61,15 @@ public partial class DataCollectManager
             {
                 if (emExitRecord.Value.GetValueOrDefault(0) != 0)
                 {
-                    _ = _lineNotify.Notify("警急排放口開啟");
-                    emExitOpen = true;
+                    if (emExitLastOpenTime > DateTime.Now)
+                    {
+                        emExitLastOpenTime = DateTime.Now;    
+                    }
+                    else
+                    {
+                        _ = _lineNotify.Notify("警急排放口開啟");
+                        emExitOpen = true;    
+                    }
                 }
             }
             else
@@ -70,6 +78,7 @@ public partial class DataCollectManager
                 {
                     _ = _lineNotify.Notify("警急排放口關閉");
                     emExitOpen = false;
+                    emExitLastOpenTime = DateTime.MaxValue;
                 }
             }
         }

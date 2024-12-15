@@ -288,31 +288,16 @@ public partial class DataCollectManager : IHostedService, IDisposable
         var mtList = UploadList.Select(x => x.MonitorType).ToList();
 
         var uploadFile = new CpmsUploadFile(siteInfo.SiteCode, current, siteInfo.PlaceNumber);
-        var dataMap = await _recordIo.GetData(TableType.AdjustedData, 1, mtList, current, current.AddMinutes(1));
-
-        string convertValue(string mt, Record record)
-        {
-            if(mt == "F48")
-                return record.Value.HasValue ? (record.Value.Value * 5).ToString("F2") : "";
-            
-            return record.Value.HasValue ? record.Value.Value.ToString("F2") : "";
-        }
-        
-        string convertHourValue(string mt, Record record)
-        {
-            if(mt == "F48")
-                return record.Value.HasValue ? (record.Value.Value * 60).ToString("F2") : "";
-            
-            return record.Value.HasValue ? record.Value.Value.ToString("F2") : "";
-        }
+        var timeDataMap = await _measuringAdjust.Get5MinData(1, current.AddMinutes(-4), current.AddMinutes(1));
+        var dataMap = timeDataMap[current];
         
         foreach (var mt in mtList)
         {
-            var record = dataMap[current][mt];
             var uploadMT = UpdateMonitorTypeMap[mt];
-            string value = convertValue(mt, record);
-
-            uploadFile.AddEntry($"9{uploadMT.fmt}", uploadMT.equip, current, value, record.Status);
+            if(dataMap.TryGetValue(mt, out var record))
+                uploadFile.AddEntry($"9{uploadMT.fmt}", uploadMT.equip, current, convertValue(mt, record), record.Status);
+            else
+                uploadFile.AddEntry($"9{uploadMT.fmt}", uploadMT.equip, current, "", "32");
         }
 
         if (current.Minute == 0)
@@ -321,15 +306,35 @@ public partial class DataCollectManager : IHostedService, IDisposable
                 await _recordIo.GetData(TableType.AdjustedData60, 1, mtList, current, current.AddMinutes(1));
             foreach (var mt in mtList)
             {
-                var record = hourDataMap[current][mt];
                 var uploadMT = UpdateMonitorTypeMap[mt];
-                string value = convertHourValue(mt, record);
-                uploadFile.AddEntry($"2{uploadMT.fmt}", uploadMT.equip, current, value, record.Status);
+                if(hourDataMap[current].TryGetValue(mt, out var record))
+                    uploadFile.AddEntry($"2{uploadMT.fmt}", uploadMT.equip, current, convertHourValue(mt, record), record.Status);
+                else
+                    uploadFile.AddEntry($"2{uploadMT.fmt}", uploadMT.equip, current, "", "32");
             }
         }
         
         var path = await uploadFile.Flush();
         CpmsUploadFile.UploadAndBackup(path, current);
+        return;
+
+        string convertValue(string mt, Record record)
+        {
+            return mt switch
+            {
+                "F48" => record.Value.HasValue ? (record.Value.Value * 5).ToString("F2") : "",
+                _ => record.Value.HasValue ? record.Value.Value.ToString("F2") : ""
+            };
+        }
+        
+        string convertHourValue(string mt, Record record)
+        {
+            return mt switch
+            {
+                "F48" => record.Value.HasValue ? (record.Value.Value * 60).ToString("F2") : "",
+                _ => record.Value.HasValue ? record.Value.Value.ToString("F2") : ""
+            };
+        }
     }
 
     private void ReadPemsDevice(bool param1, TimeSpan interval, TimeSpan timeout,
@@ -408,17 +413,18 @@ public partial class DataCollectManager : IHostedService, IDisposable
             UpdateRecord(MonitorTypeCode.BlowerSpeed4, result.Content[13]);
             UpdateRecord(MonitorTypeCode.EmExit, result.Content[14]);
             
-            OperateResult<uint[]> result1;
+            OperateResult<ushort[]> result1;
             count = 0;
             do
             {
-                result1 = await plc.ReadUInt32Async("W20", 1);
+                result1 = await plc.ReadUInt16Async("W20", 1);
             } while (result.IsSuccess == false && count++ < 3);
             if(result1.IsSuccess == false)
             {
                 _logger.LogDebug("ReadMitsubishiPLC failed");
                 return;
             }
+            
             
             UpdateRecord(MonitorTypeCode.WashTowerPressDiff, decimal.Divide(result1.Content[0], 10));
 
