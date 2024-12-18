@@ -19,7 +19,7 @@
                 <EditForm Model="@_model" OnValidSubmit="OnValidSubmit">
                     <DataAnnotationsValidator/>
                     <ValidationSummary/>
-                    <div class="row mb-1">
+                    @*<div class="row mb-1">
                         <label class="col-md-2 col-form-label" for="Pipe">煙道</label>
                         <div class="col-md-10">
                             <SfDropDownList ID="Pipe" TValue="int" TItem="IPipe" @bind-value="@_model.PipeId"
@@ -29,7 +29,7 @@
                             </SfDropDownList>
                             <ValidationMessage For="@(() => _model.PipeId)"/>
                         </div>
-                    </div>
+                    </div>*@
                     <div class="row mb-1">
                         <label class="col-md-2 col-form-label" for="Pipe">資料種類</label>
                         <div class="col-md-10">

@@ -56,7 +56,7 @@ public class ExcelUtility
         ISheet sheet = workBook.GetSheetAt(0);
         ICell cell = sheet.GetRow(3).GetCell(14);
         FormatCellValue(cell, start.Year - 1911, start.Month, start.Day);
-        var mtList = new string[]
+        var mtList = new[]
         {
             MonitorTypeCode.OpTemp.ToString(),
             MonitorTypeCode.BurnerTemp.ToString(),
@@ -111,6 +111,140 @@ public class ExcelUtility
             }
         }
 
+        #endregion
+
+        workBook.SetActiveSheet(0);
+        workBook.SetForceFormulaRecalculation(true);
+        using var outputStream = new FileStream(dest, FileMode.Create, FileAccess.Write);
+        workBook.Write(outputStream);
+        outputStream.Close();
+
+        return dest;
+    }
+    
+    public string Export5MinDailyReport(DateTime dateTime, string monitorType, 
+        Dictionary<DateTime, Dictionary<string, Record>> dailyRecord)
+    {
+        var start = dateTime.Date;
+        var src = Path.Combine(_env.WebRootPath, "ReportTemplate", "FiveMinDailyReport.xlsx");
+        var dest = Path.GetTempFileName();
+
+        using var stream = new FileStream(src, FileMode.Open, FileAccess.Read);
+        var workBook = new XSSFWorkbook(stream);
+
+        #region 封面
+
+        ISheet sheet = workBook.GetSheetAt(0);
+        ICell cell = sheet.GetRow(3).GetCell(12);
+        FormatCellValue(cell, start.Year - 1911, start.Month, start.Day);
+        cell = sheet.GetRow(3).GetCell(2);
+        cell.SetCellValue(_monitorTypeIo.PipeMonitorTypeMap[1][monitorType].Name);
+        
+       
+        foreach (var (hour, hourIndex) in Helper.GetTimeSeries(start, start.AddDays(1), TimeSpan.FromHours(1))
+            .Select((time, idx) => (time, idx)))
+        {
+            foreach (var (dt, minIndex) in Helper.GetTimeSeries(hour, hour.AddHours(1), TimeSpan.FromMinutes(5))
+                         .Select((time, idx) => (time, idx)))
+            {
+                if (dt > DateTime.Now)
+                    break;
+                
+                cell = sheet.GetRow(6 + hourIndex).GetCell(2+minIndex);
+                if (dailyRecord.TryGetValue(dt, out var recordMap) && recordMap.TryGetValue(monitorType, out var record))
+                {
+                    if(record.Value.HasValue)
+                        cell.SetCellValue(Convert.ToDouble(record.Value.Value));
+                }
+            }
+        }
+        cell = sheet.GetRow(30).GetCell(2);
+        if(_monitorTypeIo.PipeMonitorTypeMap[1][monitorType].Standard.HasValue)
+            cell.SetCellValue(Convert.ToDouble(_monitorTypeIo.PipeMonitorTypeMap[1][monitorType].Standard!.Value));
+        
+        
+        var values = dailyRecord.Values.Where(dict => dict.ContainsKey(monitorType) && dict[monitorType].Value.HasValue)
+            .Select(dict => dict[monitorType].Value!.Value).ToArray();
+        if(values.Length > 0)
+        {
+            cell = sheet.GetRow(31).GetCell(2);
+            cell.SetCellValue(Convert.ToDouble(values.Max()));
+            cell = sheet.GetRow(32).GetCell(2);
+            cell.SetCellValue(Convert.ToDouble(values.Min()));
+            cell = sheet.GetRow(33).GetCell(2);
+            cell.SetCellValue(Convert.ToDouble(values.Average()));
+            cell = sheet.GetRow(34).GetCell(2);
+            int overCount = dailyRecord.Values.Count(dict => dict.ContainsKey(monitorType) && dict[monitorType].Status == "11");
+            cell.SetCellValue(overCount);
+        }
+        #endregion
+
+        workBook.SetActiveSheet(0);
+        workBook.SetForceFormulaRecalculation(true);
+        using var outputStream = new FileStream(dest, FileMode.Create, FileAccess.Write);
+        workBook.Write(outputStream);
+        outputStream.Close();
+
+        return dest;
+    }
+    
+    public string Export5MinDailyReportWithStatus(DateTime dateTime, string monitorType, 
+        Dictionary<DateTime, Dictionary<string, Record>> dailyRecord)
+    {
+        var start = dateTime.Date;
+        var src = Path.Combine(_env.WebRootPath, "ReportTemplate", "FiveMinDailyReportWithStatus.xlsx");
+        var dest = Path.GetTempFileName();
+
+        using var stream = new FileStream(src, FileMode.Open, FileAccess.Read);
+        var workBook = new XSSFWorkbook(stream);
+
+        #region 封面
+
+        ISheet sheet = workBook.GetSheetAt(0);
+        ICell cell = sheet.GetRow(3).GetCell(11);
+        FormatCellValue(cell, start.Year - 1911, start.Month, start.Day);
+        cell = sheet.GetRow(3).GetCell(2);
+        cell.SetCellValue(_monitorTypeIo.PipeMonitorTypeMap[1][monitorType].Name);
+        
+       
+        foreach (var (hour, hourIndex) in Helper.GetTimeSeries(start, start.AddDays(1), TimeSpan.FromHours(1))
+            .Select((time, idx) => (time, idx)))
+        {
+            foreach (var (dt, minIndex) in Helper.GetTimeSeries(hour, hour.AddHours(1), TimeSpan.FromMinutes(5))
+                         .Select((time, idx) => (time, idx)))
+            {
+                if (dt > DateTime.Now)
+                    break;
+                
+                if (dailyRecord.TryGetValue(dt, out var recordMap) && recordMap.TryGetValue(monitorType, out var record))
+                {
+                    cell = sheet.GetRow(6 + hourIndex).GetCell(2 + 2 * minIndex);
+                    if(record.Value.HasValue)
+                        cell.SetCellValue(Convert.ToDouble(record.Value.Value));
+                    cell = sheet.GetRow(6 + hourIndex).GetCell(3 + 2 * minIndex);
+                    cell.SetCellValue(record.Status);
+                }
+            }
+        }
+        cell = sheet.GetRow(30).GetCell(2);
+        if(_monitorTypeIo.PipeMonitorTypeMap[1][monitorType].Standard.HasValue)
+            cell.SetCellValue(Convert.ToDouble(_monitorTypeIo.PipeMonitorTypeMap[1][monitorType].Standard!.Value));
+        
+        
+        var values = dailyRecord.Values.Where(dict => dict.ContainsKey(monitorType) && dict[monitorType].Value.HasValue)
+            .Select(dict => dict[monitorType].Value!.Value).ToArray();
+        if(values.Length > 0)
+        {
+            cell = sheet.GetRow(31).GetCell(2);
+            cell.SetCellValue(Convert.ToDouble(values.Max()));
+            cell = sheet.GetRow(32).GetCell(2);
+            cell.SetCellValue(Convert.ToDouble(values.Min()));
+            cell = sheet.GetRow(33).GetCell(2);
+            cell.SetCellValue(Convert.ToDouble(values.Average()));
+            cell = sheet.GetRow(34).GetCell(2);
+            int overCount = dailyRecord.Values.Count(dict => dict.ContainsKey(monitorType) && dict[monitorType].Status == "11");
+            cell.SetCellValue(overCount);
+        }
         #endregion
 
         workBook.SetActiveSheet(0);

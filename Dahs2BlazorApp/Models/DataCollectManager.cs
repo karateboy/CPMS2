@@ -373,6 +373,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
                 });
         }
     }
+    private int _lastWaterQuantity = 0;
     private async Task ReadMitsubishiPLC()
     {
         _logger.LogDebug("ReadMitsubishiPLC");
@@ -453,11 +454,24 @@ public partial class DataCollectManager : IHostedService, IDisposable
         }
 
         return;
-
+        
         void UpdateRecord(MonitorTypeCode mtc, decimal value)
         {
             const int pipeId = 1;
             const int deviceId = 100;
+            if (mtc == MonitorTypeCode.WaterQuantity)
+            {
+                if (_lastWaterQuantity == 0)
+                {
+                    _lastWaterQuantity = (int)value;
+                }
+            }
+            
+            // sanity check
+            if(mtc == MonitorTypeCode.WaterQuantity && 
+               Math.Abs((Convert.ToInt32(value)-_lastWaterQuantity)/_lastWaterQuantity) > 0.1)
+                return;
+            
             UpdatePipeMonitorTypeMap(pipeId, deviceId, mtc.ToString(),
                 new Record
                 {

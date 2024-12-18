@@ -1,6 +1,7 @@
 ﻿@using Syncfusion.Blazor.Cards
 @using Syncfusion.Blazor.Calendars
 @using Syncfusion.Blazor.SplitButtons
+@using Syncfusion.Blazor.Buttons
 @using System.ComponentModel.DataAnnotations
 @using Dahs2BlazorApp.Models
 @inject PipeIo PipeIo
@@ -8,6 +9,7 @@
 @inject ILogger<DailyReport> Logger
 @inject ExcelUtility ExcelUtility
 @inject RecordIo RecordIo
+@inject MeasuringAdjust MeasuringAdjust
 @inject IJSRuntime JsRuntime
 
 <PageTitle>@Title</PageTitle>
@@ -29,6 +31,22 @@
                         </div>
                     </div>*@
                     <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="MonitorTypes">測項</label>
+                        <div class="col-md-10">
+                            <SfDropDownList ID="MonitorTypes" TValue="string" TItem="IMonitorType"
+                                            @bind-value="@_model.MonitorType"
+                                            DataSource="@MonitorTypes">
+                                <DropDownListFieldSettings Value="Sid" Text="Name"></DropDownListFieldSettings>
+                            </SfDropDownList>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <label class="col-md-2 col-form-label" for="MonitorTypes">包含狀態</label>
+                        <div class="col-md-10">
+                            <SfCheckBox ID="WithStatus" @bind-Checked="_model.WithStatus"></SfCheckBox>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
                         <label class="col-md-2 col-form-label" for="DateStart">查詢日期</label>
                         <div class="col-md-10">
                             <SfDatePicker TValue="DateTime" ID="DateStart" @bind-Value="@_model.Start"
@@ -37,7 +55,7 @@
                     </div>
                     <div class="row mb-1">
                         <div class="offset-md-2">
-                            <SfProgressButton Content="下載" IsPrimary="true">
+                            <SfProgressButton Content="查詢下載" IsPrimary="true">
                                 <ProgressButtonSpinSettings Position="SpinPosition.Right"
                                                             Width="20"></ProgressButtonSpinSettings>
                             </SfProgressButton>
@@ -53,132 +71,83 @@
             <table class="table table-bordered table-sm table-striped text-center">
                 <thead>
                 <tr>
-                    <th>項　目</th>
-                    <th>E501
-                        操作溫度
-                    </th>
-                    <th>E501
-                        出口溫度
-                    </th>
-                    <th>E502
-                        出口溫度
-                    </th>
-                    <th>P501
-                        一氧化碳
-                    </th>
-                    <th>P501
-                        氧氣
-                    </th>
-                    <th>A501
-                        入口溫度
-                    </th>
-                    <th>A501
-                        差壓
-                    </th>
-                    <th>A501
-                        秤重模組
-                    </th>
-                    <th>A502
-                        洗滌液流率
-                    </th>
-                    <th>A502
-                        PH值
-                    </th>
-                    <th>A502
-                        差壓
-                    </th>
-                    <th>P501
-                        排氣風量
-                    </th>
-                    <th>A502
-                        換水量
-                    </th>
+                    <th>小時\分鐘</th>
+                    @foreach (var time in timeSlots)
+                    {
+                        @if (_model.WithStatus)
+                        {
+                            <th colspan="2">@($"{time:00}")</th>
+                        }
+                        else
+                        {
+                            <th>@($"{time:00}")</th>
+                        }
+                    }
+                </tr>
+                <tr>
+                    <th></th>
+                    @foreach (var time in timeSlots)
+                    {
+                        <th>測值</th>
+                        @if (_model.WithStatus)
+                        {
+                            <th>狀態</th>
+                        }
+                    }
                 </tr>
                 </thead>
                 <tbody>
-
-                <tr>
-                    <th>單位</th>
-                    @foreach (var mt in mtList)
-                    {
-                        <td>@MonitorTypeIo.PipeMonitorTypeMap[1][mt].Unit2</td>
-                    }
-                </tr>
-                <tr>
-                    <th>排放標準/操作條件</th>
-                    @foreach (var mt in mtList)
-                    {
-                        <td>@GetRange(mt)</td>
-                    }
-                </tr>
-
-
-                @foreach (var hr in Enumerable.Range(0, 24))
+                @foreach (var hour in hours)
                 {
                     <tr>
-                        <th>@($"{hr:00}~{hr + 1:00}")</th>
-                        @foreach (var mt in mtList)
+                        <th>@($"{hour:00}~{hour+1:00}")</th>
+                        @foreach (var time in timeSlots)
                         {
-                            @if (_dailyRecordMap.TryGetValue(_model.Start.AddHours(hr), out var hourRecordMap))
+                            var key = _model.Start.AddHours(hour).AddMinutes(time);
+                            if(key>DateTime.Now)
                             {
-                                <td>@hourRecordMap[mt].Value</td>
+                                <td></td>
+                                @if (_model.WithStatus)
+                                {
+                                    <td></td>
+                                }
+                                continue;
+                            }
+                            
+                            if (_dailyRecordMap.TryGetValue(key, out var mtRecordMap))
+                            {
+                                var record = mtRecordMap[_model.MonitorType];
+                                <td>@(record.Value.HasValue ? $"{record.Value:F2}" : "-")</td>
+                                @if (_model.WithStatus)
+                                {
+                                    <td>@record.Status</td>
+                                }
                             }
                             else
                             {
                                 <td>-</td>
+                                @if (_model.WithStatus)
+                                {
+                                    <td>-</td>
+                                }
                             }
                         }
                     </tr>
                 }
-                <tr>
-                    <th>監測時數</th>
-                    @foreach (var mt in mtList)
-                    {
-                        <td>@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt))</td>
-                    }
-                </tr>
-                <tr>
-                    <th>超限次數</th>
-                    @foreach (var mt in mtList)
-                    {
-                        <td>@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && dict[mt].Status == "11")</td>
-                    }
-                </tr>
-                <tr>
-                    <th>有效時數</th>
-                    @foreach (var mt in mtList)
-                    {
-                        var validStatuses = new[] { "00", "01", "02", "10", "11" };
-                        <td>@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && validStatuses.Contains(dict[mt].Status))</td>
-                    }
-                </tr>
-                <tr>
-                    <th>平均值</th>
-                    @foreach (var mt in mtList)
-                    {
-                        <td>@GetAverage(mt)</td>
-                    }
-                </tr>
-                <tr>
-                    <th>最大值</th>
-                    @foreach (var mt in mtList)
-                    {
-                        <td>@GetMax(mt)</td>
-                    }
-                </tr>
-            <tr>
-                <th>最小值</th>
-                @foreach (var mt in mtList)
-                {
-                    <td>@GetMin(mt)</td>
-                }
+            <tr><th>排放標準</th>
+                <td colspan="3">@MonitorTypeIo.PipeMonitorTypeMap[1][_model.MonitorType].Standard</td>
             </tr>
-                <tr>
-                    <th>有效比率</th>
-                    @foreach (var mt in mtList)
-                    {
-                        <td>@GetValidRate(mt)</td>
-                    }
+                <tr><th>最大值</th>
+                    <td colspan="3">@GetMax(_model.MonitorType)</td>
+                </tr>
+                <tr><th>最小值</th>
+                    <td colspan="3">@GetMin(_model.MonitorType)</td>
+                </tr>
+                <tr><th>平均值</th>
+                    <td colspan="3">@GetAverage(_model.MonitorType)</td>
+                </tr>
+                <tr><th>超限次數</th>
+                    <td colspan="3">@GetOverCount(_model.MonitorType)</td>
                 </tr>
                 </tbody>
             </table>
@@ -188,43 +157,32 @@
 <br/>
 
 @code {
-    private const string Title = "日報查詢";
+    private const string Title = "5分鐘日報查詢";
 
     [CascadingParameter] SfToast? ToastObj { get; set; }
+
+    private List<IMonitorType> MonitorTypes => MonitorTypeIo.PipeMonitorTypeMap[1].Values.ToList();
 
     public class QueryModel
     {
         [Required(ErrorMessage = "請選擇煙道")] public int PipeId { get; set; }
-
+        [Required(ErrorMessage = "請選擇測項")] public string MonitorType { get; set; }
         [Required(ErrorMessage = "請選擇日期")] public required DateTime Start { get; set; }
+        public bool WithStatus { get; set; }
     }
+
+    int[] timeSlots = { 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55 };
+    List<int> hours = Enumerable.Range(0, 24).ToList();
 
     private readonly QueryModel _model = new()
     {
         PipeId = SiteConfig.DefaultPipes[0].Id,
+        MonitorType = "WashFlow",
         Start = DateTime.Today.AddDays(-1)
     };
 
     private bool DisplayReport { get; set; } = false;
-
-    List<string> mtList =
-        new()
-        {
-            MonitorTypeCode.OpTemp.ToString(),
-            MonitorTypeCode.BurnerTemp.ToString(),
-            MonitorTypeCode.SecondTemp.ToString(),
-            MonitorTypeCode.A24.ToString(),
-            MonitorTypeCode.E36.ToString(),
-            MonitorTypeCode.BFTemp.ToString(),
-            MonitorTypeCode.BFPressDiff.ToString(),
-            MonitorTypeCode.BFWeightMod.ToString(),
-            MonitorTypeCode.WashFlow.ToString(),
-            MonitorTypeCode.PH.ToString(),
-            MonitorTypeCode.WashTowerPressDiff.ToString(),
-            MonitorTypeCode.F48.ToString(),
-            MonitorTypeCode.WaterQuantity.ToString(),
-        };
-
+    
     private Dictionary<DateTime, Dictionary<string, Record>> _dailyRecordMap = new();
 
     string GetRange(string sid)
@@ -253,17 +211,16 @@
     {
         try
         {
-            _dailyRecordMap = await RecordIo.GetData(TableType.AdjustedData60, 1, mtList, _model.Start, _model.Start.AddDays(1));
-            var excel =
-                ExcelUtility.ExportDailyReport(_model.Start, _dailyRecordMap);
+            _dailyRecordMap = await MeasuringAdjust.Get5MinData(1, _model.Start, _model.Start.AddDays(1));
+            var excel = _model.WithStatus? ExcelUtility.Export5MinDailyReportWithStatus(_model.Start, _model.MonitorType, _dailyRecordMap):
+                ExcelUtility.Export5MinDailyReport(_model.Start, _model.MonitorType, _dailyRecordMap);
             DisplayReport = true;
 
             StateHasChanged();
             
             var streamRef = new DotNetStreamReference(stream: File.OpenRead(excel));
-            var fileName = $"{_model.Start:yyyyMMdd}_小時平均日報表.xlsx";
+            var fileName = $"{_model.Start:yyyyMMdd}_{MonitorTypeIo.PipeMonitorTypeMap[1][_model.MonitorType].Name}五分鐘日報表.xlsx";
             await JsRuntime.InvokeVoidAsync("downloadStream", fileName, streamRef);
-            
         }
         catch (Exception ex)
         {
@@ -307,4 +264,11 @@
         var totalCount = _dailyRecordMap.Values.Count(dict => dict.ContainsKey(sid));
         return totalCount > 0 ? $"{validCount / totalCount * 100:F2}%" : "-";
     }
+
+    int GetOverCount(string sid)
+    {
+        return _dailyRecordMap.Values
+            .Count(dict => dict.ContainsKey(sid) && dict[sid].Value.HasValue && dict[sid].Status == "11");
+    }
+
 }
