@@ -102,6 +102,7 @@ public static class Helper
     public enum RecordStatus
     {
         Normal,
+        Warning,
         OverRange,
         Fixing,
         Calibration,
@@ -121,6 +122,12 @@ public static class Helper
             
             if(mt.AlarmLow.HasValue && record.Value < mt.AlarmLow)
                 return RecordStatus.OverRange;
+            
+            if (mt.Warning.HasValue && record.Value > mt.Warning)
+                return RecordStatus.Warning;
+            
+            if (mt.WarningLow.HasValue && record.Value < mt.WarningLow)
+                return RecordStatus.Warning;
         } 
         
         return record.Status switch
@@ -157,6 +164,7 @@ public static class Helper
         return recordStatus switch
         {
             RecordStatus.Normal => "normal normal_status",
+            RecordStatus.Warning => "normal calibration_status",
             RecordStatus.OverRange => "text-white blink abnormal_status",
             RecordStatus.Fixing => "normal fixing_status",
             RecordStatus.Calibration => "normal calibration_status",
@@ -171,6 +179,7 @@ public static class Helper
         return recordStatus switch
         {
             RecordStatus.Normal => "normal normal_status",
+            RecordStatus.Warning => "normal calibration_status",
             RecordStatus.OverRange => "text-white abnormal_status",
             RecordStatus.Fixing => "normal fixing_status",
             RecordStatus.Calibration => "normal calibration_status",

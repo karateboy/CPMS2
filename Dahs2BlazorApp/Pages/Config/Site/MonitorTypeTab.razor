@@ -78,26 +78,16 @@
                     TextAlign="TextAlign.Right"
                     AutoFit="true">
         </GridColumn>
-        @*<GridColumn Field="@nameof(MonitorTypeViewModel.EmissionFactor)"
-                    HeaderText="排放係數"
+        <GridColumn Field="@nameof(MonitorTypeViewModel.Warning)"
+                    HeaderText="注意上限"
                     TextAlign="TextAlign.Right"
                     AutoFit="true">
         </GridColumn>
-        <GridColumn Field="@nameof(MonitorTypeViewModel.ControlEfficiency)"
-                    HeaderText="汙染控制效率"
+        <GridColumn Field="@nameof(MonitorTypeViewModel.WarningLow)"
+                    HeaderText="注意下限"
                     TextAlign="TextAlign.Right"
                     AutoFit="true">
         </GridColumn>
-        <GridColumn Field="@nameof(MonitorTypeViewModel.MaxValue)"
-                    HeaderText="最大可能濃度/測值"
-                    TextAlign="TextAlign.Right"
-                    AutoFit="true">
-        </GridColumn>
-        <GridColumn Field="@nameof(MonitorTypeViewModel.MonitorOtherPipe)"
-                    HeaderText="同時監控其他管道編號"
-                    TextAlign="TextAlign.Left"
-                    AutoFit="true">
-        </GridColumn>*@
     </GridColumns>
 </SfGrid>
 
