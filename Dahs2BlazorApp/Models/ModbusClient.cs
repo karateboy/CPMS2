@@ -58,7 +58,7 @@ public class ModbusClient : IDisposable
             DisposeClient();
         }
 
-        if (_lastConnectTime.HasValue && DateTime.Now - _lastConnectTime.Value < TimeSpan.FromSeconds(30))
+        if (_lastConnectTime.HasValue && DateTime.Now - _lastConnectTime.Value < TimeSpan.FromSeconds(5))
         {
             throw new Exception("Connect too frequently");
         }

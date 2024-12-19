@@ -89,9 +89,18 @@ public partial class DataCollectManager : IHostedService, IDisposable
 
             var (deviceId, rawRecord) = deviceRecord;
             string status = GetRecordStatus(pipeId, monitorType, deviceId, rawRecord);
+            var mtDef = SiteConfig.PipeMonitorTypes[pipeId]
+                .FirstOrDefault(x => x.Sid.ToString() == monitorType);
+            
+            var v = rawRecord.Value;
+            if( v > mtDef!.RangeMax)
+                v = mtDef.RangeMax;
+            if (v < mtDef.RangeMin)
+                v = mtDef.RangeMin;
+            
             ret[monitorType] = new Record
             {
-                Value = rawRecord.Value,
+                Value = v,
                 Status = $"{status}",
                 Baf = 1.0m
             };

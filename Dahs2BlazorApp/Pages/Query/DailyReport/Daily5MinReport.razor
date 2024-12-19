@@ -41,12 +41,6 @@
                         </div>
                     </div>
                     <div class="row mb-1">
-                        <label class="col-md-2 col-form-label" for="MonitorTypes">包含狀態</label>
-                        <div class="col-md-10">
-                            <SfCheckBox ID="WithStatus" @bind-Checked="_model.WithStatus"></SfCheckBox>
-                        </div>
-                    </div>
-                    <div class="row mb-1">
                         <label class="col-md-2 col-form-label" for="DateStart">查詢日期</label>
                         <div class="col-md-10">
                             <SfDatePicker TValue="DateTime" ID="DateStart" @bind-Value="@_model.Start"
@@ -54,8 +48,14 @@
                         </div>
                     </div>
                     <div class="row mb-1">
+                        <div class="offset-2 col-md-10">
+                            <SfCheckBox ID="WithStatus" Label="包含狀態" @bind-Checked="_model.WithStatus"></SfCheckBox>
+                            <SfCheckBox ID="Excel" Label="下載Excel" @bind-Checked="_model.DownloadExcel"></SfCheckBox>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
                         <div class="offset-md-2">
-                            <SfProgressButton Content="查詢下載" IsPrimary="true">
+                            <SfProgressButton Content="查詢" IsPrimary="true">
                                 <ProgressButtonSpinSettings Position="SpinPosition.Right"
                                                             Width="20"></ProgressButtonSpinSettings>
                             </SfProgressButton>
@@ -169,6 +169,7 @@
         [Required(ErrorMessage = "請選擇測項")] public string MonitorType { get; set; }
         [Required(ErrorMessage = "請選擇日期")] public required DateTime Start { get; set; }
         public bool WithStatus { get; set; }
+        public bool DownloadExcel { get; set; }
     }
 
     int[] timeSlots = { 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55 };
@@ -212,15 +213,17 @@
         try
         {
             _dailyRecordMap = await MeasuringAdjust.Get5MinData(1, _model.Start, _model.Start.AddDays(1));
-            var excel = _model.WithStatus? ExcelUtility.Export5MinDailyReportWithStatus(_model.Start, _model.MonitorType, _dailyRecordMap):
-                ExcelUtility.Export5MinDailyReport(_model.Start, _model.MonitorType, _dailyRecordMap);
             DisplayReport = true;
 
             StateHasChanged();
-            
-            var streamRef = new DotNetStreamReference(stream: File.OpenRead(excel));
-            var fileName = $"{_model.Start:yyyyMMdd}_{MonitorTypeIo.PipeMonitorTypeMap[1][_model.MonitorType].Name}五分鐘日報表.xlsx";
-            await JsRuntime.InvokeVoidAsync("downloadStream", fileName, streamRef);
+            if(_model.DownloadExcel)
+            {
+                var excel = _model.WithStatus? ExcelUtility.Export5MinDailyReportWithStatus(_model.Start, _model.MonitorType, _dailyRecordMap):
+                    ExcelUtility.Export5MinDailyReport(_model.Start, _model.MonitorType, _dailyRecordMap);
+                var streamRef = new DotNetStreamReference(stream: File.OpenRead(excel));
+                var fileName = $"{_model.Start:yyyyMMdd}_{MonitorTypeIo.PipeMonitorTypeMap[1][_model.MonitorType].Name}五分鐘日報表.xlsx";
+                await JsRuntime.InvokeVoidAsync("downloadStream", fileName, streamRef);    
+            }
         }
         catch (Exception ex)
         {

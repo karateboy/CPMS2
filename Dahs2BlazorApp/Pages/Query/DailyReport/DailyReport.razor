@@ -1,6 +1,7 @@
 ﻿@using Syncfusion.Blazor.Cards
 @using Syncfusion.Blazor.Calendars
 @using Syncfusion.Blazor.SplitButtons
+@using Syncfusion.Blazor.Buttons
 @using System.ComponentModel.DataAnnotations
 @using Dahs2BlazorApp.Models
 @inject PipeIo PipeIo
@@ -36,8 +37,13 @@
                         </div>
                     </div>
                     <div class="row mb-1">
+                        <div class="offset-2 col-md-10">
+                            <SfCheckBox ID="Excel" Label="下載Excel" @bind-Checked="_model.DownloadExcel"></SfCheckBox>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
                         <div class="offset-md-2">
-                            <SfProgressButton Content="下載" IsPrimary="true">
+                            <SfProgressButton Content="查詢" IsPrimary="true">
                                 <ProgressButtonSpinSettings Position="SpinPosition.Right"
                                                             Width="20"></ProgressButtonSpinSettings>
                             </SfProgressButton>
@@ -197,12 +203,14 @@
         [Required(ErrorMessage = "請選擇煙道")] public int PipeId { get; set; }
 
         [Required(ErrorMessage = "請選擇日期")] public required DateTime Start { get; set; }
+        public bool DownloadExcel { get; set; }
     }
 
     private readonly QueryModel _model = new()
     {
         PipeId = SiteConfig.DefaultPipes[0].Id,
-        Start = DateTime.Today.AddDays(-1)
+        Start = DateTime.Today.AddDays(-1),
+        DownloadExcel = false
     };
 
     private bool DisplayReport { get; set; } = false;
@@ -254,16 +262,17 @@
         try
         {
             _dailyRecordMap = await RecordIo.GetData(TableType.AdjustedData60, 1, mtList, _model.Start, _model.Start.AddDays(1));
-            var excel =
-                ExcelUtility.ExportDailyReport(_model.Start, _dailyRecordMap);
+            
             DisplayReport = true;
 
             StateHasChanged();
+            if (!_model.DownloadExcel) return;
             
+            var excel =
+                ExcelUtility.ExportDailyReport(_model.Start, _dailyRecordMap);
             var streamRef = new DotNetStreamReference(stream: File.OpenRead(excel));
             var fileName = $"{_model.Start:yyyyMMdd}_小時平均日報表.xlsx";
             await JsRuntime.InvokeVoidAsync("downloadStream", fileName, streamRef);
-            
         }
         catch (Exception ex)
         {
