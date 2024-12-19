@@ -281,7 +281,7 @@ public static class SiteConfig
                         AdjustFactor: new AdjustFactor(false, false)),
                     new(Sid: MonitorTypeCode.WashFlow, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.WaterQuantity, RangeMin: 0m, RangeMax: 3000m,
+                    new(Sid: MonitorTypeCode.WaterQuantity, RangeMin: 0m, RangeMax: decimal.MaxValue,
                         AdjustFactor: new AdjustFactor(false, false)),
                     new(Sid: MonitorTypeCode.BlowerSpeed, RangeMin: 0m, RangeMax: 3000m,
                         AdjustFactor: new AdjustFactor(false, false)),

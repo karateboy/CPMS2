@@ -96,12 +96,12 @@ public class MeasuringAdjust
     public async Task<Dictionary<DateTime, Dictionary<string, Record>>> Get5MinData(int pipeId, DateTime start, DateTime end)
     {
         var timeRecordMap = await _recordIo.GetData(TableType.AdjustedData, pipeId,
-            _monitorTypeIo.GetMonitorTypeSids(pipeId), start, end);
+            _monitorTypeIo.GetMonitorTypeSids(pipeId), start.AddMinutes(-5), end);
 
         var result = new Dictionary<DateTime, Dictionary<string, Record>>();
         foreach (var dt in Helper.GetTimeSeries(start, end, TimeSpan.FromMinutes(5)))
         {
-            var oneMinDataMap = timeRecordMap.Where(kv => kv.Key >= dt && kv.Key < dt.AddMinutes(5))
+            var oneMinDataMap = timeRecordMap.Where(kv => kv.Key >= dt.AddMinutes(-5) && kv.Key < dt)
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
             result.Add(dt, Calculate5MinData(pipeId, oneMinDataMap));
         }

@@ -41,26 +41,25 @@ public class SiteInfoIo
     {
         try
         {
-            var siteNameTask = _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Name)}");
-            var siteCodeTask = _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.SiteCode)}");
-            var addressTask = _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Address)}");
-            var ownerTask = _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Owner)}");
-            var placeNumberTask = _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.PlaceNumber)}");
-            var industryTask = _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Industry)}");
-            var industryCodeTask = _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.IndustryCode)}");
-            var phoneTask = _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Phone)}");
-            await Task.WhenAll(siteNameTask, siteCodeTask, addressTask, ownerTask, placeNumberTask, industryTask,
-                industryCodeTask, phoneTask);
+            var siteName = await _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Name)}");
+            var siteCode = await _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.SiteCode)}");
+            var address = await _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Address)}");
+            var owner = await _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Owner)}");
+            var placeNumber = await _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.PlaceNumber)}");
+            var industry = await _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Industry)}");
+            var industryCode = await _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.IndustryCode)}");
+            var phone = await _sysConfigIo.GetSysConfig($"SiteInfo-{nameof(SiteInfo.Phone)}");
+            
             return new SiteInfo
             {
-                Name = siteNameTask.Result,
-                SiteCode = siteCodeTask.Result,
-                Address = addressTask.Result,
-                Owner = ownerTask.Result,
-                PlaceNumber = placeNumberTask.Result,
-                Industry = industryTask.Result,
-                IndustryCode = industryCodeTask.Result,
-                Phone = phoneTask.Result
+                Name = siteName,
+                SiteCode = siteCode,
+                Address = address,
+                Owner = owner,
+                PlaceNumber = placeNumber,
+                Industry = industry,
+                IndustryCode = industryCode,
+                Phone = phone
             };
         }
         catch (Exception e)

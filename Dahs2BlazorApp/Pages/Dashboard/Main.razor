@@ -132,13 +132,13 @@
             .Select(mt => GetPipeAdjustedRecord(pipe.Id, mt.Sid)
                 .ToRecordStatus(mt))
             .Any(recordStatus => recordStatus is Helper.RecordStatus.Abnormal
-                or Helper.RecordStatus.OverRange or Helper.RecordStatus.Fixing));
+                or Helper.RecordStatus.OverRange));
 
         var pems = PipeIo.Pipes.Any(pipe => MonitorTypeIo.GetPemsMonitorTypes(pipe.Id)
             .Select(mt => GetPipeRawRecord(pipe.Id, mt.Sid)
                 .ToRecordStatus(mt))
             .Any(recordStatus => recordStatus is Helper.RecordStatus.Abnormal
-                or Helper.RecordStatus.OverRange or Helper.RecordStatus.Fixing));
+                or Helper.RecordStatus.OverRange));
 
         return cems || pems;
     }

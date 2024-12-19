@@ -18,7 +18,6 @@ public partial class DataCollectManager : IHostedService, IDisposable
     private readonly AlarmIo _alarmIo;
     private readonly PipeIo _pipeIo;
     private readonly DeviceOutputIo _deviceOutputIo;
-    private readonly SiteInfoIo _siteInfoIo;
     private readonly ILineNotify _lineNotify;
 
     public DataCollectManager(ILogger<DataCollectManager> logger,
@@ -41,7 +40,6 @@ public partial class DataCollectManager : IHostedService, IDisposable
         _alarmIo = alarmIo;
         _pipeIo = pipeIo;
         _deviceOutputIo = deviceOutputIo;
-        _siteInfoIo = siteInfoIo;
         _lineNotify = lineNotify;
     }
 
@@ -91,13 +89,13 @@ public partial class DataCollectManager : IHostedService, IDisposable
             string status = GetRecordStatus(pipeId, monitorType, deviceId, rawRecord);
             var mtDef = SiteConfig.PipeMonitorTypes[pipeId]
                 .FirstOrDefault(x => x.Sid.ToString() == monitorType);
-            
+
             var v = rawRecord.Value;
-            if( v > mtDef!.RangeMax)
+            if (v > mtDef!.RangeMax)
                 v = mtDef.RangeMax;
             if (v < mtDef.RangeMin)
                 v = mtDef.RangeMin;
-            
+
             ret[monitorType] = new Record
             {
                 Value = v,
@@ -195,7 +193,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
                     monitorTypes, new() { { createDate, rawRecordMap } }, false);
                 OutputAdjustValues(pipeId, adjustRecordMap);
             }
-            
+
             var adjustCreateDate = createDate.AddMinutes(-1);
             if (adjustCreateDate.Second == 0)
             {
@@ -290,42 +288,50 @@ public partial class DataCollectManager : IHostedService, IDisposable
 
     private async Task GenerateUploadFile(DateTime current)
     {
-        if (current.Minute % 5 != 0)
-            return;
-
-        var siteInfo = await _siteInfoIo.GetSiteInfo();
-        var mtList = UploadList.Select(x => x.MonitorType).ToList();
-
-        var uploadFile = new CpmsUploadFile(siteInfo.SiteCode, current, siteInfo.PlaceNumber);
-        var timeDataMap = await _measuringAdjust.Get5MinData(1, current.AddMinutes(-4), current.AddMinutes(1));
-        var dataMap = timeDataMap[current];
-        
-        foreach (var mt in mtList)
+        try
         {
-            var uploadMT = UpdateMonitorTypeMap[mt];
-            if(dataMap.TryGetValue(mt, out var record))
-                uploadFile.AddEntry($"9{uploadMT.fmt}", uploadMT.equip, current, convertValue(mt, record), record.Status);
-            else
-                uploadFile.AddEntry($"9{uploadMT.fmt}", uploadMT.equip, current, "", "32");
-        }
+            if (current.Minute % 5 != 0)
+                return;
 
-        if (current.Minute == 0)
-        {
-            var hourDataMap =
-                await _recordIo.GetData(TableType.AdjustedData60, 1, mtList, current, current.AddMinutes(1));
+            //var siteInfo = await _siteInfoIo.GetSiteInfo();
+            var mtList = UploadList.Select(x => x.MonitorType).ToList();
+
+            var uploadFile = new CpmsUploadFile("H5201141", current, "H74");
+            var timeDataMap = await _measuringAdjust.Get5MinData(1, current, current.AddMinutes(1));
+            var dataMap = timeDataMap[current];
+
             foreach (var mt in mtList)
             {
                 var uploadMT = UpdateMonitorTypeMap[mt];
-                if(hourDataMap[current].TryGetValue(mt, out var record))
-                    uploadFile.AddEntry($"2{uploadMT.fmt}", uploadMT.equip, current, convertHourValue(mt, record), record.Status);
+                if (dataMap.TryGetValue(mt, out var record))
+                    uploadFile.AddEntry($"9{uploadMT.fmt}", uploadMT.equip, current, convertValue(mt, record),
+                        record.Status);
                 else
-                    uploadFile.AddEntry($"2{uploadMT.fmt}", uploadMT.equip, current, "", "32");
+                    uploadFile.AddEntry($"9{uploadMT.fmt}", uploadMT.equip, current, "", "32");
             }
+
+            if (current.Minute == 0)
+            {
+                var hourDataMap =
+                    await _recordIo.GetData(TableType.AdjustedData60, 1, mtList, current, current.AddMinutes(1));
+                foreach (var mt in mtList)
+                {
+                    var uploadMT = UpdateMonitorTypeMap[mt];
+                    if (hourDataMap[current].TryGetValue(mt, out var record))
+                        uploadFile.AddEntry($"2{uploadMT.fmt}", uploadMT.equip, current, convertHourValue(mt, record),
+                            record.Status);
+                    else
+                        uploadFile.AddEntry($"2{uploadMT.fmt}", uploadMT.equip, current, "", "32");
+                }
+            }
+
+            var path = await uploadFile.Flush();
+            CpmsUploadFile.UploadAndBackup(path, current);
         }
-        
-        var path = await uploadFile.Flush();
-        CpmsUploadFile.UploadAndBackup(path, current);
-        return;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GenerateUploadFile failed");
+        }
 
         string convertValue(string mt, Record record)
         {
@@ -335,7 +341,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
                 _ => record.Value.HasValue ? record.Value.Value.ToString("F2") : ""
             };
         }
-        
+
         string convertHourValue(string mt, Record record)
         {
             return mt switch
@@ -357,7 +363,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
         UpdateRecord(MonitorTypeCode.SecondTemp, 1);
         UpdateRecord(MonitorTypeCode.BFTemp, 2);
         UpdateRecord(MonitorTypeCode.BFPressDiff, decimal.Divide(4, 10m));
-        UpdateRecord(MonitorTypeCode.BFWeightMod, decimal.Divide(4,10m));
+        UpdateRecord(MonitorTypeCode.BFWeightMod, decimal.Divide(4, 10m));
         UpdateRecord(MonitorTypeCode.WashFlow, 5);
         UpdateRecord(MonitorTypeCode.PH, decimal.Divide(6, 100));
         UpdateRecord(MonitorTypeCode.BlowerSpeed, 7);
@@ -367,8 +373,8 @@ public partial class DataCollectManager : IHostedService, IDisposable
         UpdateRecord(MonitorTypeCode.BlowerSpeed2, 11);
         UpdateRecord(MonitorTypeCode.BlowerSpeed3, 12);
         UpdateRecord(MonitorTypeCode.BlowerSpeed4, 13);
-        UpdateRecord(MonitorTypeCode.EmExit, 14); 
-        
+        UpdateRecord(MonitorTypeCode.EmExit, 14);
+
         void UpdateRecord(MonitorTypeCode mtc, decimal value)
         {
             const int pipeId = 1;
@@ -382,7 +388,9 @@ public partial class DataCollectManager : IHostedService, IDisposable
                 });
         }
     }
+
     private int _lastWaterQuantity = 0;
+
     private async Task ReadMitsubishiPLC()
     {
         _logger.LogDebug("ReadMitsubishiPLC");
@@ -411,7 +419,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
             UpdateRecord(MonitorTypeCode.SecondTemp, result.Content[0]);
             UpdateRecord(MonitorTypeCode.BFTemp, result.Content[1]);
             UpdateRecord(MonitorTypeCode.BFPressDiff, decimal.Divide(result.Content[2], 10m));
-            UpdateRecord(MonitorTypeCode.BFWeightMod, decimal.Divide(result.Content[3],10m));
+            UpdateRecord(MonitorTypeCode.BFWeightMod, decimal.Divide(result.Content[3], 10m));
             UpdateRecord(MonitorTypeCode.WashFlow, result.Content[4]);
             UpdateRecord(MonitorTypeCode.PH, decimal.Divide(result.Content[5], 100));
             UpdateRecord(MonitorTypeCode.BlowerSpeed, result.Content[7]);
@@ -422,19 +430,20 @@ public partial class DataCollectManager : IHostedService, IDisposable
             UpdateRecord(MonitorTypeCode.BlowerSpeed3, result.Content[12]);
             UpdateRecord(MonitorTypeCode.BlowerSpeed4, result.Content[13]);
             UpdateRecord(MonitorTypeCode.EmExit, result.Content[14]);
-            
+
             OperateResult<ushort[]> result1;
             count = 0;
             do
             {
                 result1 = await plc.ReadUInt16Async("W20", 1);
             } while (result.IsSuccess == false && count++ < 3);
-            if(result1.IsSuccess == false)
+
+            if (result1.IsSuccess == false)
             {
                 _logger.LogDebug("ReadMitsubishiPLC failed");
                 return;
             }
-            
+
             UpdateRecord(MonitorTypeCode.WashTowerPressDiff, decimal.Divide(result1.Content[0], 10));
 
             OperateResult<uint[]> result2;
@@ -450,7 +459,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
                 return;
             }
 
-            UpdateRecord(MonitorTypeCode.WaterQuantity, result2.Content[0] / 100m);
+            UpdateRecord(MonitorTypeCode.WaterQuantity, decimal.Divide(result2.Content[0], 100m));
         }
         catch (Exception ex)
         {
@@ -462,11 +471,12 @@ public partial class DataCollectManager : IHostedService, IDisposable
         }
 
         return;
-        
+
         void UpdateRecord(MonitorTypeCode mtc, decimal value)
         {
             const int pipeId = 1;
             const int deviceId = 100;
+
             if (mtc == MonitorTypeCode.WaterQuantity)
             {
                 if (_lastWaterQuantity == 0)
@@ -474,15 +484,15 @@ public partial class DataCollectManager : IHostedService, IDisposable
                     _lastWaterQuantity = (int)value;
                 }
             }
-            
-            // sanity check
-            if(mtc == MonitorTypeCode.WaterQuantity && 
-               Math.Abs((Convert.ToInt32(value)-_lastWaterQuantity)/_lastWaterQuantity) > 0.1)
+
+            // sanity check            
+            if (mtc == MonitorTypeCode.WaterQuantity &&
+                Math.Abs(Convert.ToInt32(value) - _lastWaterQuantity) > 5157)
                 return;
-            
-            if(mtc == MonitorTypeCode.WashTowerPressDiff && value > 60)
+
+            if (mtc == MonitorTypeCode.WashTowerPressDiff && (value > 60 || value < 8))
                 return;
-            
+
             UpdatePipeMonitorTypeMap(pipeId, deviceId, mtc.ToString(),
                 new Record
                 {
@@ -539,7 +549,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
                     foreach (var pipeId in pipeIds)
                     {
                         if (!update) continue;
-                        
+
                         await _measuringAdjust.CalculateFix1Min(pipeId, current);
 
                         if (current.Minute == 0)
