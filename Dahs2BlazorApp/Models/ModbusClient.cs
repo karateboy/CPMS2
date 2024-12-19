@@ -537,7 +537,10 @@ public class ModbusClient : IDisposable
         if(cancellationToken.IsCancellationRequested)
             DisposeClient();
         
-        var list = recordMap.Select(pair=>(pair.Key, pair.Value)).ToList();
+        var list = recordMap.Select(pair=>(pair.Key, pair.Value))
+            .Where(pair => pair.Item2.HasValue)
+            .ToList();
+        
         return (list, signalList);
     }
 
