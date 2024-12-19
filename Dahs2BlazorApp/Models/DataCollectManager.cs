@@ -435,7 +435,6 @@ public partial class DataCollectManager : IHostedService, IDisposable
                 return;
             }
             
-            
             UpdateRecord(MonitorTypeCode.WashTowerPressDiff, decimal.Divide(result1.Content[0], 10));
 
             OperateResult<uint[]> result2;
@@ -479,6 +478,9 @@ public partial class DataCollectManager : IHostedService, IDisposable
             // sanity check
             if(mtc == MonitorTypeCode.WaterQuantity && 
                Math.Abs((Convert.ToInt32(value)-_lastWaterQuantity)/_lastWaterQuantity) > 0.1)
+                return;
+            
+            if(mtc == MonitorTypeCode.WashTowerPressDiff && value > 60)
                 return;
             
             UpdatePipeMonitorTypeMap(pipeId, deviceId, mtc.ToString(),
