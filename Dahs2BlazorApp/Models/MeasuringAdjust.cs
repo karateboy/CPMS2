@@ -56,7 +56,7 @@ public class MeasuringAdjust
         }).Select(kv => kv.Key).First();
     }
 
-    private string[] accumulativeMonitorTypes = { "WaterQuantity", "BFWeightMod" };
+    private readonly string[] accumulativeMonitorTypes = { "WaterQuantity", "BFWeightMod" };
 
     private Dictionary<string, Record> Calculate5MinData(int pipeId,
         IReadOnlyDictionary<DateTime, Dictionary<string, Record>> timeRecordMap)
@@ -375,15 +375,25 @@ public class MeasuringAdjust
                             switch (sid)
                             {
                                 case "WaterQuantity":
-                                    record.Value -= prevRecord.Value;
+                                    if(record.Value.HasValue && prevRecord.Value.HasValue && record.Value != 0)
+                                        record.Value -= prevRecord.Value;
+                                    else
+                                        record.Value = 0;
                                     break;
                                 case "BFWeightMod":
-                                    record.Value = prevRecord.Value - record.Value;
+                                    if(record.Value.HasValue && prevRecord.Value.HasValue && prevRecord.Value != 0)
+                                        record.Value = prevRecord.Value - record.Value;
+                                    else
+                                        record.Value = 0;
                                     break;
                             }
 
                             if (record.Value < 0)
                                 record.Value = 0;
+                            
+                            if(sid == "BFWeightMod" && record.Value > 5)
+                                record.Value = 0;
+                                
                         }
                         else
                         {
