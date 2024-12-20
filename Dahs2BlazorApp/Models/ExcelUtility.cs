@@ -132,10 +132,8 @@ public class ExcelUtility
         using var stream = new FileStream(src, FileMode.Open, FileAccess.Read);
         var workBook = new XSSFWorkbook(stream);
 
-        #region 封面
-
         ISheet sheet = workBook.GetSheetAt(0);
-        ICell cell = sheet.GetRow(3).GetCell(12);
+        ICell cell = sheet.GetRow(3).GetCell(11);
         FormatCellValue(cell, start.Year - 1911, start.Month, start.Day);
         cell = sheet.GetRow(3).GetCell(2);
         cell.SetCellValue(_monitorTypeIo.PipeMonitorTypeMap[1][monitorType].Name);
@@ -177,7 +175,6 @@ public class ExcelUtility
             int overCount = dailyRecord.Values.Count(dict => dict.ContainsKey(monitorType) && dict[monitorType].Status == "11");
             cell.SetCellValue(overCount);
         }
-        #endregion
 
         workBook.SetActiveSheet(0);
         workBook.SetForceFormulaRecalculation(true);
@@ -197,8 +194,6 @@ public class ExcelUtility
 
         using var stream = new FileStream(src, FileMode.Open, FileAccess.Read);
         var workBook = new XSSFWorkbook(stream);
-
-        #region 封面
 
         ISheet sheet = workBook.GetSheetAt(0);
         ICell cell = sheet.GetRow(3).GetCell(11);
@@ -245,7 +240,6 @@ public class ExcelUtility
             int overCount = dailyRecord.Values.Count(dict => dict.ContainsKey(monitorType) && dict[monitorType].Status == "11");
             cell.SetCellValue(overCount);
         }
-        #endregion
 
         workBook.SetActiveSheet(0);
         workBook.SetForceFormulaRecalculation(true);

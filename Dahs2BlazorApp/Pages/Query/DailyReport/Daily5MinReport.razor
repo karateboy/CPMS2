@@ -218,11 +218,20 @@
             StateHasChanged();
             if(_model.DownloadExcel)
             {
-                var excel = _model.WithStatus? ExcelUtility.Export5MinDailyReportWithStatus(_model.Start, _model.MonitorType, _dailyRecordMap):
-                    ExcelUtility.Export5MinDailyReport(_model.Start, _model.MonitorType, _dailyRecordMap);
-                var streamRef = new DotNetStreamReference(stream: File.OpenRead(excel));
-                var fileName = $"{_model.Start:yyyyMMdd}_{MonitorTypeIo.PipeMonitorTypeMap[1][_model.MonitorType].Name}五分鐘日報表.xlsx";
-                await JsRuntime.InvokeVoidAsync("downloadStream", fileName, streamRef);    
+                if(_model.WithStatus)
+                {
+                    var excel = ExcelUtility.Export5MinDailyReportWithStatus(_model.Start, _model.MonitorType, _dailyRecordMap);
+                    var streamRef = new DotNetStreamReference(stream: File.OpenRead(excel));
+                    var fileName = $"{_model.Start:yyyyMMdd}_{MonitorTypeIo.PipeMonitorTypeMap[1][_model.MonitorType].Name}五分鐘日報表.xlsx";
+                    await JsRuntime.InvokeVoidAsync("downloadStream", fileName, streamRef);
+                }
+                else
+                {
+                    var excel = ExcelUtility.Export5MinDailyReport(_model.Start, _model.MonitorType, _dailyRecordMap);
+                    var streamRef = new DotNetStreamReference(stream: File.OpenRead(excel));
+                    var fileName = $"{_model.Start:yyyyMMdd}_{MonitorTypeIo.PipeMonitorTypeMap[1][_model.MonitorType].Name}五分鐘日報表.xlsx";
+                    await JsRuntime.InvokeVoidAsync("downloadStream", fileName, streamRef);
+                }
             }
         }
         catch (Exception ex)

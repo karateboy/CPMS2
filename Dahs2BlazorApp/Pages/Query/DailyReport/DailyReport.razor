@@ -89,7 +89,7 @@
                         洗滌液流率
                     </th>
                     <th colspan="@(_model.WithStatus?2:1)">A502
-                        PH值
+                        pH值
                     </th>
                     <th colspan="@(_model.WithStatus?2:1)">A502
                         差壓
@@ -249,6 +249,12 @@
     {
         var mt = MonitorTypeIo.PipeMonitorTypeMap[1][sid];
 
+        if (mt.Sid == "OpTemp")
+            return "";
+        
+        if(mt.Sid == MonitorTypeCode.BFWeightMod.ToString())
+            return "1.58~2.45";
+        
         if (mt.Alarm.HasValue && mt.AlarmLow.HasValue)
         {
             return $"{mt.AlarmLow:F0}~{mt.Alarm:F0}";

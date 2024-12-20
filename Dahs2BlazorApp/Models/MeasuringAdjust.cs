@@ -67,7 +67,8 @@ public class MeasuringAdjust
         {
             var records = timeRecordMap.Values.Select(map => map[sid]).ToList();
 
-            if (records.Count == 0)
+            var validRecords = records.Where(record => record.Value.HasValue).ToList();
+            if (validRecords.Count == 0)
             {
                 var record = new Record
                 {
@@ -79,12 +80,12 @@ public class MeasuringAdjust
             }
 
 
-            var status = records.GroupBy(record => record.Status)
+            var status = validRecords.GroupBy(record => record.Status)
                 .OrderByDescending(pair => pair.Count()).First().Key;
-
+            
             ret.Add(sid, new Record
             {
-                Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
+                Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(validRecords) : GetAvg(validRecords),
                 Status = status
             });
         }
@@ -96,12 +97,12 @@ public class MeasuringAdjust
     public async Task<Dictionary<DateTime, Dictionary<string, Record>>> Get5MinData(int pipeId, DateTime start, DateTime end)
     {
         var timeRecordMap = await _recordIo.GetData(TableType.AdjustedData, pipeId,
-            _monitorTypeIo.GetMonitorTypeSids(pipeId), start.AddMinutes(-5), end);
+            _monitorTypeIo.GetMonitorTypeSids(pipeId), start.AddMinutes(-4), end);
 
         var result = new Dictionary<DateTime, Dictionary<string, Record>>();
         foreach (var dt in Helper.GetTimeSeries(start, end, TimeSpan.FromMinutes(5)))
         {
-            var oneMinDataMap = timeRecordMap.Where(kv => kv.Key >= dt.AddMinutes(-5) && kv.Key < dt)
+            var oneMinDataMap = timeRecordMap.Where(kv => kv.Key >= dt.AddMinutes(-4) && kv.Key <= dt)
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
             result.Add(dt, Calculate5MinData(pipeId, oneMinDataMap));
         }
@@ -375,13 +376,15 @@ public class MeasuringAdjust
                             switch (sid)
                             {
                                 case "WaterQuantity":
-                                    if(record.Value.HasValue && prevRecord.Value.HasValue && record.Value != 0)
+                                    if(record.Value.HasValue && prevRecord.Value.HasValue && 
+                                       record.Value != 0 && prevRecord.Value != 0)
                                         record.Value -= prevRecord.Value;
                                     else
                                         record.Value = 0;
                                     break;
                                 case "BFWeightMod":
-                                    if(record.Value.HasValue && prevRecord.Value.HasValue && prevRecord.Value != 0)
+                                    if(record.Value.HasValue && prevRecord.Value.HasValue && 
+                                       prevRecord.Value != 0 && record.Value != 0)
                                         record.Value = prevRecord.Value - record.Value;
                                     else
                                         record.Value = 0;
@@ -397,7 +400,7 @@ public class MeasuringAdjust
                         }
                         else
                         {
-                            record.Value = null;
+                            record.Value = 0m;
                         }
                     }
                     else
@@ -706,7 +709,7 @@ public class MeasuringAdjust
                 return new Dictionary<string, Record>();
 
             var hourRecordMap = CalculateHourData(pipeId,
-                await Get5MinData(pipeId, target.AddHours(-1), target.AddMinutes(1)));
+                await Get5MinData(pipeId, target.AddHours(-1).AddMinutes(5), target.AddMinutes(1)));
             await _recordIo.UpsertData(TableType.AdjustedData60, pipeId, target, hourRecordMap);
             return hourRecordMap;
         }
