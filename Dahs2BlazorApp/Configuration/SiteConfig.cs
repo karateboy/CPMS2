@@ -283,7 +283,7 @@ public static class SiteConfig
                         AdjustFactor: new AdjustFactor(false, false)),
                     new(Sid: MonitorTypeCode.BFPressDiff, RangeMin: 0m, RangeMax: 70m,
                         AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BFWeightMod, RangeMin: 0m, RangeMax: 70m,
+                    new(Sid: MonitorTypeCode.BFWeightMod, RangeMin: 1.58m, RangeMax: 2.45m,
                         AdjustFactor: new AdjustFactor(false, false)),
                     new(Sid: MonitorTypeCode.WashFlow, RangeMin: 0m, RangeMax: 1200m,
                         AdjustFactor: new AdjustFactor(false, false)),
