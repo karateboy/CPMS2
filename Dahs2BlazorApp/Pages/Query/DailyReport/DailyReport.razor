@@ -38,6 +38,7 @@
                     </div>
                     <div class="row mb-1">
                         <div class="offset-2 col-md-10">
+                            <SfCheckBox ID="WithStatus" Label="包含狀態" @bind-Checked="_model.WithStatus"></SfCheckBox>
                             <SfCheckBox ID="Excel" Label="下載Excel" @bind-Checked="_model.DownloadExcel"></SfCheckBox>
                         </div>
                     </div>
@@ -60,43 +61,43 @@
                 <thead>
                 <tr>
                     <th>項　目</th>
-                    <th>E501
+                    <th colspan="@(_model.WithStatus?2:1)">E501
                         操作溫度
                     </th>
-                    <th>E501
+                    <th colspan="@(_model.WithStatus?2:1)">E501
                         出口溫度
                     </th>
-                    <th>E502
+                    <th colspan="@(_model.WithStatus?2:1)">E502
                         出口溫度
                     </th>
-                    <th>P501
+                    <th colspan="@(_model.WithStatus?2:1)">P501
                         一氧化碳
                     </th>
-                    <th>P501
+                    <th colspan="@(_model.WithStatus?2:1)">P501
                         氧氣
                     </th>
-                    <th>A501
+                    <th colspan="@(_model.WithStatus?2:1)">A501
                         入口溫度
                     </th>
-                    <th>A501
+                    <th colspan="@(_model.WithStatus?2:1)">A501
                         差壓
                     </th>
-                    <th>A501
+                    <th colspan="@(_model.WithStatus?2:1)">A501
                         秤重模組
                     </th>
-                    <th>A502
+                    <th colspan="@(_model.WithStatus?2:1)">A502
                         洗滌液流率
                     </th>
-                    <th>A502
+                    <th colspan="@(_model.WithStatus?2:1)">A502
                         PH值
                     </th>
-                    <th>A502
+                    <th colspan="@(_model.WithStatus?2:1)">A502
                         差壓
                     </th>
-                    <th>P501
+                    <th colspan="@(_model.WithStatus?2:1)">P501
                         排氣風量
                     </th>
-                    <th>A502
+                    <th colspan="@(_model.WithStatus?2:1)">A502
                         換水量
                     </th>
                 </tr>
@@ -107,14 +108,14 @@
                     <th>單位</th>
                     @foreach (var mt in mtList)
                     {
-                        <td>@MonitorTypeIo.PipeMonitorTypeMap[1][mt].Unit2</td>
+                        <td  colspan="@(_model.WithStatus?2:1)">@MonitorTypeIo.PipeMonitorTypeMap[1][mt].Unit2</td>
                     }
                 </tr>
                 <tr>
                     <th>排放標準/操作條件</th>
                     @foreach (var mt in mtList)
                     {
-                        <td>@GetRange(mt)</td>
+                        <td colspan="@(_model.WithStatus?2:1)">@GetRange(mt)</td>
                     }
                 </tr>
 
@@ -128,10 +129,18 @@
                             @if (_dailyRecordMap.TryGetValue(_model.Start.AddHours(hr), out var hourRecordMap))
                             {
                                 <td>@hourRecordMap[mt].Value</td>
+                                @if (_model.WithStatus)
+                                {
+                                    <td>@hourRecordMap[mt].Status</td>
+                                }
                             }
                             else
                             {
                                 <td>-</td>
+                                @if (_model.WithStatus)
+                                {
+                                    <td>-</td>
+                                }
                             }
                         }
                     </tr>
@@ -140,14 +149,14 @@
                     <th>監測時數</th>
                     @foreach (var mt in mtList)
                     {
-                        <td>@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt))</td>
+                        <td colspan="@(_model.WithStatus?2:1)">@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt))</td>
                     }
                 </tr>
                 <tr>
                     <th>超限次數</th>
                     @foreach (var mt in mtList)
                     {
-                        <td>@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && dict[mt].Status == "11")</td>
+                        <td colspan="@(_model.WithStatus?2:1)">@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && dict[mt].Status == "11")</td>
                     }
                 </tr>
                 <tr>
@@ -155,35 +164,35 @@
                     @foreach (var mt in mtList)
                     {
                         var validStatuses = new[] { "00", "01", "02", "10", "11" };
-                        <td>@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && validStatuses.Contains(dict[mt].Status))</td>
+                        <td colspan="@(_model.WithStatus?2:1)">@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && validStatuses.Contains(dict[mt].Status))</td>
                     }
                 </tr>
                 <tr>
                     <th>平均值</th>
                     @foreach (var mt in mtList)
                     {
-                        <td>@GetAverage(mt)</td>
+                        <td colspan="@(_model.WithStatus?2:1)">@GetAverage(mt)</td>
                     }
                 </tr>
                 <tr>
                     <th>最大值</th>
                     @foreach (var mt in mtList)
                     {
-                        <td>@GetMax(mt)</td>
+                        <td colspan="@(_model.WithStatus?2:1)">@GetMax(mt)</td>
                     }
                 </tr>
             <tr>
                 <th>最小值</th>
                 @foreach (var mt in mtList)
                 {
-                    <td>@GetMin(mt)</td>
+                    <td colspan="@(_model.WithStatus?2:1)">@GetMin(mt)</td>
                 }
             </tr>
                 <tr>
                     <th>有效比率</th>
                     @foreach (var mt in mtList)
                     {
-                        <td>@GetValidRate(mt)</td>
+                        <td colspan="@(_model.WithStatus?2:1)">@GetValidRate(mt)</td>
                     }
                 </tr>
                 </tbody>
@@ -203,6 +212,7 @@
         [Required(ErrorMessage = "請選擇煙道")] public int PipeId { get; set; }
 
         [Required(ErrorMessage = "請選擇日期")] public required DateTime Start { get; set; }
+        public bool WithStatus { get; set; }
         public bool DownloadExcel { get; set; }
     }
 
@@ -314,6 +324,6 @@
         var validStatuses = new[] { "00", "01", "02", "10", "11" };
         var validCount = _dailyRecordMap.Values.Count(dict => dict.ContainsKey(sid) && validStatuses.Contains(dict[sid].Status));
         var totalCount = _dailyRecordMap.Values.Count(dict => dict.ContainsKey(sid));
-        return totalCount > 0 ? $"{validCount / totalCount * 100:F2}%" : "-";
+        return totalCount > 0 ? $"{(double)validCount * 100/ totalCount:F2}%" : "-";
     }
 }
