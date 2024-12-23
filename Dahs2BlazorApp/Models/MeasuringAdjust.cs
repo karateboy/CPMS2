@@ -37,15 +37,37 @@ public class MeasuringAdjust
                 MidpointRounding.AwayFromZero);
     }
 
+    /*
     private static decimal? GetSum(IEnumerable<Record> values)
     {
         var nonemptyValues = values.Where(record => record.Value.HasValue).ToList();
         if (nonemptyValues.Count == 0)
             return null;
-        else
-            return Math.Round(nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).Sum(), 2,
-                MidpointRounding.AwayFromZero);
+        return Math.Round(nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).Sum(), 2,
+            MidpointRounding.AwayFromZero);
     }
+    */
+
+    private static decimal? GetDiff(IEnumerable<Record> values)
+    {
+        var nonemptyValues = values.Where(record => record.Value.HasValue).ToList();
+        if (nonemptyValues.Count < 2)
+            return null;
+        return Math.Round(nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).Last() -
+                          nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).First(), 2,
+            MidpointRounding.AwayFromZero);
+    }
+
+    private static decimal? GetLast(IEnumerable<Record> values)
+    {
+        var nonemptyValues = values.Where(record => record.Value.HasValue).ToList();
+        if (nonemptyValues.Count == 0)
+            return null;
+
+        return Math.Round(nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).Last(), 2,
+            MidpointRounding.AwayFromZero);
+    }
+
 
     private static string GetMaxCountKey(IReadOnlyDictionary<string, int> dataStateCountMap, string[] order)
     {
@@ -82,10 +104,10 @@ public class MeasuringAdjust
 
             var status = validRecords.GroupBy(record => record.Status)
                 .OrderByDescending(pair => pair.Count()).First().Key;
-            
+
             ret.Add(sid, new Record
             {
-                Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(validRecords) : GetAvg(validRecords),
+                Value = accumulativeMonitorTypes.Contains(sid) ? GetLast(validRecords) : GetAvg(validRecords),
                 Status = status
             });
         }
@@ -94,7 +116,8 @@ public class MeasuringAdjust
     }
 
 
-    public async Task<Dictionary<DateTime, Dictionary<string, Record>>> Get5MinData(int pipeId, DateTime start, DateTime end)
+    public async Task<Dictionary<DateTime, Dictionary<string, Record>>> Get5MinData(int pipeId, DateTime start,
+        DateTime end)
     {
         var timeRecordMap = await _recordIo.GetData(TableType.AdjustedData, pipeId,
             _monitorTypeIo.GetMonitorTypeSids(pipeId), start.AddMinutes(-4), end);
@@ -122,7 +145,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
                     Status = "32"
                 });
                 continue;
@@ -132,7 +155,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
                     Status = "20"
                 });
                 continue;
@@ -142,7 +165,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
                     Status = "31"
                 });
                 continue;
@@ -152,7 +175,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
                     Status = "30"
                 });
                 continue;
@@ -163,7 +186,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(normalRecords) : GetAvg(normalRecords),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(normalRecords) : GetAvg(normalRecords),
                     Status = "01"
                 });
                 continue;
@@ -173,7 +196,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(normalRecords) : GetAvg(normalRecords),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(normalRecords) : GetAvg(normalRecords),
                     Status = "02"
                 });
                 continue;
@@ -183,7 +206,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
                     Status = "00"
                 });
                 continue;
@@ -193,7 +216,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(normalRecords) : GetAvg(normalRecords),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(normalRecords) : GetAvg(normalRecords),
                     Status = "10"
                 });
                 continue;
@@ -202,7 +225,7 @@ public class MeasuringAdjust
 
             ret.Add(sid, new Record
             {
-                Value = accumulativeMonitorTypes.Contains(sid) ? GetSum(normalRecords) : GetAvg(normalRecords),
+                Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(normalRecords) : GetAvg(normalRecords),
                 Status = "11"
             });
         }
@@ -363,82 +386,25 @@ public class MeasuringAdjust
             var record = rawDataMap[sid];
             var item = _monitorTypeIo.PipeMonitorTypeMap[pipeId][sid];
             var typeDef = SiteConfig.PipeMonitorTypeMap[pipeId][sid];
-            switch (sid)
+            if (record.Value.HasValue)
             {
-                // accumulative MonitorType
-                case "WaterQuantity":
-                case "BFWeightMod":
-                    if (rawTimeDataMap.TryGetValue(start.AddMinutes(-1), out var rawLast1MinDataMap) &&
-                        rawLast1MinDataMap.TryGetValue(sid, out var prevRecord))
-                    {
-                        if (prevRecord.Value.HasValue)
-                        {
-                            switch (sid)
-                            {
-                                case "WaterQuantity":
-                                    if(record.Value.HasValue && prevRecord.Value.HasValue && 
-                                       record.Value != 0 && prevRecord.Value != 0)
-                                        record.Value -= prevRecord.Value;
-                                    else
-                                        record.Value = 0;
-                                    break;
-                                case "BFWeightMod":
-                                    if(record.Value.HasValue && prevRecord.Value.HasValue && 
-                                       prevRecord.Value != 0 && record.Value != 0)
-                                        record.Value = prevRecord.Value - record.Value;
-                                    else
-                                        record.Value = 0;
-                                    break;
-                            }
-
-                            if (record.Value < 0)
-                                record.Value = 0;
-                            
-                            if(sid == "BFWeightMod" && record.Value > 5)
-                                record.Value = 0;
-                                
-                        }
-                        else
-                        {
-                            record.Value = 0m;
-                        }
-                    }
-                    else
-                    {
-                        record.Value = 0m;
-                    }
-
-                    break;
-
-                default:
-                    if (record.Value.HasValue)
-                    {
-                        record.Value = typeDef.CheckRange(record.Value.GetValueOrDefault());
-                        record.Value = Helper.GetOtherFixValue(sid,
-                            typeDef.AdjustFactor.O2,
-                            typeDef.AdjustFactor.Water,
-                            record.Value.GetValueOrDefault(),
-                            dWater.GetValueOrDefault(),
-                            record.Baf.GetValueOrDefault(1),
-                            ozoneFactor.Value);
-                        item.CheckOverStatus(record);
-                    }
-                    else
-                    {
-                        record.Value = null;
-                    }
-
-                    break;
+                record.Value = typeDef.CheckRange(record.Value.GetValueOrDefault());
+                record.Value = Helper.GetOtherFixValue(sid,
+                    typeDef.AdjustFactor.O2,
+                    typeDef.AdjustFactor.Water,
+                    record.Value.GetValueOrDefault(),
+                    dWater.GetValueOrDefault(),
+                    record.Baf.GetValueOrDefault(1),
+                    ozoneFactor.Value);
+                item.CheckOverStatus(record);
             }
-
-
-            //Take care accumulative MonitorType
+            else
+            {
+                record.Value = null;
+            }
 
             result.Add(sid, record);
         }
-
-        if (updatePipe)
-            _ = _pipeIo.UpdatePipe(pipe);
 
         return result;
     }
