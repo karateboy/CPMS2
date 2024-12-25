@@ -48,14 +48,20 @@ public class MeasuringAdjust
     }
     */
 
-    private static decimal? GetDiff(IEnumerable<Record> values)
+    private static decimal? GetDiff(string mt, IEnumerable<Record> values)
     {
         var nonemptyValues = values.Where(record => record.Value.HasValue).ToList();
         if (nonemptyValues.Count < 2)
             return null;
-        return Math.Round(nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).Last() -
-                          nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).First(), 2,
+        
+        var diff = Math.Round(nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).Last() -
+                              nonemptyValues.Select(record => record.Value.GetValueOrDefault(0)).First(), 2,
             MidpointRounding.AwayFromZero);
+        
+        if (mt == "WaterQuantity")
+            return diff;
+        
+        return -diff;
     }
 
     private static decimal? GetLast(IEnumerable<Record> values)
@@ -139,13 +145,14 @@ public class MeasuringAdjust
         Dictionary<string, Record> ret = new Dictionary<string, Record>();
         foreach (var sid in _monitorTypeIo.GetMonitorTypeSids(pipeId))
         {
-            var records = timeRecordMap.Values.Select(map => map[sid]).ToList();
+            var hourToHourRecords = timeRecordMap.Values.Select(map => map[sid]).ToList();
+            var records = timeRecordMap.Values.Select(map => map[sid]).Skip(1).ToList();
             // determine the status of the record
             if (records.Count < 12 || records.Exists(record => record.Status.EndsWith("32")))
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(sid, hourToHourRecords) : GetAvg(records),
                     Status = "32"
                 });
                 continue;
@@ -155,7 +162,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(sid, hourToHourRecords) : GetAvg(records),
                     Status = "20"
                 });
                 continue;
@@ -165,7 +172,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(sid, hourToHourRecords) : GetAvg(records),
                     Status = "31"
                 });
                 continue;
@@ -175,7 +182,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(sid, hourToHourRecords) : GetAvg(records),
                     Status = "30"
                 });
                 continue;
@@ -186,7 +193,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(normalRecords) : GetAvg(normalRecords),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(sid, hourToHourRecords) : GetAvg(normalRecords),
                     Status = "01"
                 });
                 continue;
@@ -196,7 +203,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(normalRecords) : GetAvg(normalRecords),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(sid, hourToHourRecords) : GetAvg(normalRecords),
                     Status = "02"
                 });
                 continue;
@@ -206,7 +213,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(records) : GetAvg(records),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(sid, hourToHourRecords) : GetAvg(records),
                     Status = "00"
                 });
                 continue;
@@ -216,7 +223,7 @@ public class MeasuringAdjust
             {
                 ret.Add(sid, new Record
                 {
-                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(normalRecords) : GetAvg(normalRecords),
+                    Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(sid, hourToHourRecords) : GetAvg(normalRecords),
                     Status = "10"
                 });
                 continue;
@@ -225,7 +232,7 @@ public class MeasuringAdjust
 
             ret.Add(sid, new Record
             {
-                Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(normalRecords) : GetAvg(normalRecords),
+                Value = accumulativeMonitorTypes.Contains(sid) ? GetDiff(sid, hourToHourRecords) : GetAvg(normalRecords),
                 Status = "11"
             });
         }
@@ -675,7 +682,7 @@ public class MeasuringAdjust
                 return new Dictionary<string, Record>();
 
             var hourRecordMap = CalculateHourData(pipeId,
-                await Get5MinData(pipeId, target.AddHours(-1).AddMinutes(5), target.AddMinutes(1)));
+                await Get5MinData(pipeId, target.AddHours(-1), target.AddMinutes(1)));
             await _recordIo.UpsertData(TableType.AdjustedData60, pipeId, target, hourRecordMap);
             return hourRecordMap;
         }

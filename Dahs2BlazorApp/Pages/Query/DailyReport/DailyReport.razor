@@ -61,43 +61,43 @@
                 <thead>
                 <tr>
                     <th>項　目</th>
-                    <th colspan="@(_model.WithStatus?2:1)">E501
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">E501
                         操作溫度
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">E501
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">E501
                         出口溫度
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">E502
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">E502
                         出口溫度
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">P501
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">P501
                         一氧化碳
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">P501
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">P501
                         氧氣
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">A501
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">A501
                         入口溫度
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">A501
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">A501
                         差壓
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">A501
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">A501
                         秤重模組
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">A502
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">A502
                         洗滌液流率
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">A502
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">A502
                         pH值
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">A502
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">A502
                         差壓
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">P501
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">P501
                         排氣風量
                     </th>
-                    <th colspan="@(_model.WithStatus?2:1)">A502
+                    <th colspan="@(_model.WithStatus ? 2 : 1)">A502
                         換水量
                     </th>
                 </tr>
@@ -108,14 +108,14 @@
                     <th>單位</th>
                     @foreach (var mt in mtList)
                     {
-                        <td  colspan="@(_model.WithStatus?2:1)">@MonitorTypeIo.PipeMonitorTypeMap[1][mt].Unit2</td>
+                        <td colspan="@(_model.WithStatus ? 2 : 1)">@MonitorTypeIo.PipeMonitorTypeMap[1][mt].Unit2</td>
                     }
                 </tr>
                 <tr>
                     <th>排放標準/操作條件</th>
                     @foreach (var mt in mtList)
                     {
-                        <td colspan="@(_model.WithStatus?2:1)">@GetRange(mt)</td>
+                        <td colspan="@(_model.WithStatus ? 2 : 1)">@GetRange(mt)</td>
                     }
                 </tr>
 
@@ -128,7 +128,7 @@
                         {
                             @if (_dailyRecordMap.TryGetValue(_model.Start.AddHours(hr), out var hourRecordMap))
                             {
-                                <td>@hourRecordMap[mt].Value</td>
+                                <td class="@GetOutOfRangeCssClass(mt, hourRecordMap[mt].Value)">@hourRecordMap[mt].Value</td>
                                 @if (_model.WithStatus)
                                 {
                                     <td>@hourRecordMap[mt].Status</td>
@@ -149,14 +149,14 @@
                     <th>監測時數</th>
                     @foreach (var mt in mtList)
                     {
-                        <td colspan="@(_model.WithStatus?2:1)">@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt))</td>
+                        <td colspan="@(_model.WithStatus ? 2 : 1)">@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt))</td>
                     }
                 </tr>
                 <tr>
                     <th>超限次數</th>
                     @foreach (var mt in mtList)
                     {
-                        <td colspan="@(_model.WithStatus?2:1)">@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && dict[mt].Status == "11")</td>
+                        <td colspan="@(_model.WithStatus ? 2 : 1)">@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && dict[mt].Status == "11")</td>
                     }
                 </tr>
                 <tr>
@@ -164,35 +164,35 @@
                     @foreach (var mt in mtList)
                     {
                         var validStatuses = new[] { "00", "01", "02", "10", "11" };
-                        <td colspan="@(_model.WithStatus?2:1)">@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && validStatuses.Contains(dict[mt].Status))</td>
+                        <td colspan="@(_model.WithStatus ? 2 : 1)">@_dailyRecordMap.Values.Count(dict => dict.ContainsKey(mt) && validStatuses.Contains(dict[mt].Status))</td>
                     }
                 </tr>
                 <tr>
                     <th>平均值</th>
                     @foreach (var mt in mtList)
                     {
-                        <td colspan="@(_model.WithStatus?2:1)">@GetAverage(mt)</td>
+                        <td colspan="@(_model.WithStatus ? 2 : 1)">@GetAverage(mt)</td>
                     }
                 </tr>
                 <tr>
                     <th>最大值</th>
                     @foreach (var mt in mtList)
                     {
-                        <td colspan="@(_model.WithStatus?2:1)">@GetMax(mt)</td>
+                        <td colspan="@(_model.WithStatus ? 2 : 1)">@GetMax(mt)</td>
                     }
                 </tr>
-            <tr>
-                <th>最小值</th>
-                @foreach (var mt in mtList)
-                {
-                    <td colspan="@(_model.WithStatus?2:1)">@GetMin(mt)</td>
-                }
-            </tr>
+                <tr>
+                    <th>最小值</th>
+                    @foreach (var mt in mtList)
+                    {
+                        <td colspan="@(_model.WithStatus ? 2 : 1)">@GetMin(mt)</td>
+                    }
+                </tr>
                 <tr>
                     <th>有效比率</th>
                     @foreach (var mt in mtList)
                     {
-                        <td colspan="@(_model.WithStatus?2:1)">@GetValidRate(mt)</td>
+                        <td colspan="@(_model.WithStatus ? 2 : 1)">@GetValidRate(mt)</td>
                     }
                 </tr>
                 </tbody>
@@ -243,6 +243,23 @@
             MonitorTypeCode.WaterQuantity.ToString(),
         };
 
+    record NormalRange(decimal? Low = null, decimal? High = null);
+
+    Dictionary<string, NormalRange> mtRangeMap = new()
+    {
+        { MonitorTypeCode.BurnerTemp.ToString(), new NormalRange(850, 1150) },
+        { MonitorTypeCode.SecondTemp.ToString(), new NormalRange(850) },
+        { MonitorTypeCode.A24.ToString(), new NormalRange(null, 100) },
+        { MonitorTypeCode.E36.ToString(), new NormalRange(6) },
+        { MonitorTypeCode.BFTemp.ToString(), new NormalRange(150, 200) },
+        { MonitorTypeCode.BFPressDiff.ToString(), new NormalRange(10, 70) },
+        { MonitorTypeCode.BFWeightMod.ToString(), new NormalRange(1.58m, 2.45m) },
+        { MonitorTypeCode.WashFlow.ToString(), new NormalRange(900, 1200) },
+        { MonitorTypeCode.PH.ToString(), new NormalRange(7, 9) },
+        { MonitorTypeCode.WashTowerPressDiff.ToString(), new NormalRange(10, 80) },
+        { MonitorTypeCode.F48.ToString(), new NormalRange(100, 230) }
+    };
+
     private Dictionary<DateTime, Dictionary<string, Record>> _dailyRecordMap = new();
 
     string GetRange(string sid)
@@ -251,9 +268,14 @@
 
         if (mt.Sid == "OpTemp")
             return "";
-        
-        if(mt.Sid == MonitorTypeCode.BFWeightMod.ToString())
+
+        if (mt.Sid == MonitorTypeCode.BFWeightMod.ToString())
             return "1.58~2.45";
+
+        if (mt.Sid == "F48")
+        {
+            return "100~230";
+        }
         
         if (mt.Alarm.HasValue && mt.AlarmLow.HasValue)
         {
@@ -278,12 +300,12 @@
         try
         {
             _dailyRecordMap = await RecordIo.GetData(TableType.AdjustedData60, 1, mtList, _model.Start, _model.Start.AddDays(1));
-            
+
             DisplayReport = true;
 
             StateHasChanged();
             if (!_model.DownloadExcel) return;
-            
+
             var excel =
                 ExcelUtility.ExportDailyReport(_model.Start, _dailyRecordMap);
             var streamRef = new DotNetStreamReference(stream: File.OpenRead(excel));
@@ -330,6 +352,24 @@
         var validStatuses = new[] { "00", "01", "02", "10", "11" };
         var validCount = _dailyRecordMap.Values.Count(dict => dict.ContainsKey(sid) && validStatuses.Contains(dict[sid].Status));
         var totalCount = _dailyRecordMap.Values.Count(dict => dict.ContainsKey(sid));
-        return totalCount > 0 ? $"{(double)validCount * 100/ totalCount:F2}%" : "-";
+        return totalCount > 0 ? $"{(double)validCount * 100 / totalCount:F2}%" : "-";
+    }
+
+    string GetOutOfRangeCssClass(string sid, decimal? value)
+    {
+        if (!mtRangeMap.TryGetValue(sid, out var range)) return "";
+        if (!value.HasValue) return "";
+        
+        if (range.Low.HasValue && value < range.Low)
+        {
+            return "text-danger";
+        }
+
+        if (range.High.HasValue && value > range.High)
+        {
+            return "text-danger";
+        }
+
+        return "";
     }
 }
