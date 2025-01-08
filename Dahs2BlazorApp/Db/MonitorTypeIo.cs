@@ -36,7 +36,16 @@ public interface IMonitorType
         if (!record.Status.EndsWith("10") && !record.Status.EndsWith("11"))
             return;
 
-        record.Status = record.Value > Standard ? "11" : "10";
+        if(Standard.HasValue && record.Value > Standard)
+            record.Status = "11";
+        
+        if(Alarm.HasValue && record.Value > Alarm)
+            record.Status = "11";
+        
+        if(AlarmLow.HasValue && record.Value < AlarmLow)
+            record.Status = "11";
+        
+        record.Status = "10";
     }
 }
 
