@@ -80,7 +80,10 @@ public class ExcelUtility
                 cell = sheet.GetRow(8 + hourIndex).GetCell(2 + mtIndex);
                 if (dailyRecord.TryGetValue(dt, out var recordMap) && recordMap.TryGetValue(mt, out var record))
                 {
-                    cell.SetCellValue(Convert.ToDouble(record.Value.GetValueOrDefault(0)));
+                    if (record.Value.HasValue)
+                        cell.SetCellValue(Convert.ToDouble(record.Value.Value));
+                    else
+                        cell.SetCellValue("-");
                 }
             }
 

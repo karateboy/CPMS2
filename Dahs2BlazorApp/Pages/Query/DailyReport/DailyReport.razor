@@ -128,7 +128,9 @@
                         {
                             @if (_dailyRecordMap.TryGetValue(_model.Start.AddHours(hr), out var hourRecordMap))
                             {
-                                <td class="@GetOutOfRangeCssClass(mt, hourRecordMap[mt].Value)">@hourRecordMap[mt].Value</td>
+                                <td class="@GetOutOfRangeCssClass(mt, hourRecordMap[mt].Value)">
+                                    @DisplayValue(hourRecordMap[mt].Value)
+                                </td>
                                 @if (_model.WithStatus)
                                 {
                                     <td>@hourRecordMap[mt].Status</td>
@@ -262,6 +264,11 @@
 
     private Dictionary<DateTime, Dictionary<string, Record>> _dailyRecordMap = new();
 
+    string DisplayValue(decimal? value)
+    {
+        return value.HasValue ? value.Value.ToString("F2") : "-";
+    }
+
     string GetRange(string sid)
     {
         var mt = MonitorTypeIo.PipeMonitorTypeMap[1][sid];
@@ -276,7 +283,7 @@
         {
             return "100~230";
         }
-        
+
         if (mt.Alarm.HasValue && mt.AlarmLow.HasValue)
         {
             return $"{mt.AlarmLow:F0}~{mt.Alarm:F0}";
@@ -359,7 +366,7 @@
     {
         if (!mtRangeMap.TryGetValue(sid, out var range)) return "";
         if (!value.HasValue) return "";
-        
+
         if (range.Low.HasValue && value < range.Low)
         {
             return "text-danger";
@@ -372,4 +379,5 @@
 
         return "";
     }
+
 }
