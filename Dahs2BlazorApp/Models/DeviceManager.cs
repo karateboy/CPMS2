@@ -16,11 +16,11 @@ public static class DeviceManager
         Calibrating,
     }
 
-    record DeviceControl(ModbusClient ModbusClient, DeviceState State) : IDisposable
+    record DeviceControl(ModbusMaster ModbusMaster, DeviceState State) : IDisposable
     {
         public void Dispose()
         {
-            ModbusClient.Dispose();
+            ModbusMaster.Dispose();
         }
     }
 
@@ -41,7 +41,7 @@ public static class DeviceManager
         if (_deviceIo == null) return;
         if (_deviceMeasuringIo == null) return;
         if (_deviceSignalIo == null) return;
-        var modbusReader = new ModbusClient(deviceId, _deviceIo, _deviceMeasuringIo, _deviceSignalIo, timeout);
+        var modbusReader = new ModbusMaster(deviceId, _deviceIo, _deviceMeasuringIo, _deviceSignalIo, timeout);
         DeviceControlMap[deviceId] = new DeviceControl(modbusReader, DeviceState.Normal);
     }
 
@@ -60,7 +60,7 @@ public static class DeviceManager
             if (!DeviceControlMap.TryGetValue(deviceId, out var deviceCtl)) return;
             
             var (data, signalData) =
-                deviceCtl.ModbusClient.ReadDataAndSignal(null, includeSignal: true, cancellationToken);
+                deviceCtl.ModbusMaster.ReadDataAndSignal(null, includeSignal: true, cancellationToken);
             
             HandleDeviceData(_deviceIo.DeviceMap[deviceId], data);
             
@@ -77,7 +77,7 @@ public static class DeviceManager
         if (!DeviceControlMap.TryGetValue(deviceId, out var deviceCtl))
             return new List<(IDeviceMeasuring, decimal?)>();
 
-        var (dataList, _) = deviceCtl.ModbusClient.ReadDataAndSignal(null, includeSignal: false, cancellationToken);
+        var (dataList, _) = deviceCtl.ModbusMaster.ReadDataAndSignal(null, includeSignal: false, cancellationToken);
         return dataList;
     }
 
@@ -159,14 +159,14 @@ public static class DeviceManager
         CancellationToken cancellationToken = default)
     {
         if (DeviceControlMap.TryGetValue(deviceSignal.DeviceId, out var deviceCtl))
-            deviceCtl.ModbusClient.WriteSignal(deviceSignal, value, cancellationToken);
+            deviceCtl.ModbusMaster.WriteSignal(deviceSignal, value, cancellationToken);
     }
 
     public static void WriteValue(IDeviceOutput deviceOutput, decimal value,
         CancellationToken cancellationToken = default)
     {
         if (DeviceControlMap.TryGetValue(deviceOutput.DeviceId, out var deviceCtl))
-            deviceCtl.ModbusClient.WriteData(deviceOutput, value, cancellationToken);
+            deviceCtl.ModbusMaster.WriteData(deviceOutput, value, cancellationToken);
     }
 
     public static decimal? ConvertMeasuring(int pipeId, IDeviceMeasuring measuring, decimal data)

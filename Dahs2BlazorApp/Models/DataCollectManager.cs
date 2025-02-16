@@ -668,8 +668,8 @@ public partial class DataCollectManager : IHostedService, IDisposable
             // Read Device Data
             _ = PeriodicAction(ReadPipesAction, false, TimeSpan.FromSeconds(3), TimeSpan.FromMilliseconds(2500),
                 "ReadPipesAction");
-            _ = PeriodicAction(ReadPemsDevice, false, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(3),
-                "UploadAction");
+            //_ = PeriodicAction(ReadPemsDevice, false, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(3),
+            //    "UploadAction");
             _ = PeriodicAction(UploadAction, true, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(30), "UploadAction");
             _logger.LogInformation("DataCollectManager is started");
             _ = _alarmIo.AddAlarm(AlarmIo.AlarmLevel.Info, "DAHS2 啟動");

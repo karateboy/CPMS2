@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO.Ports;
 using System.Net;
 using Dahs2BlazorApp.Configuration;
 using Dahs2BlazorApp.Db;
@@ -11,7 +12,7 @@ using ILogger = Serilog.ILogger;
 
 namespace Dahs2BlazorApp.Models;
 
-public class ModbusClient : IDisposable
+public class ModbusMaster : IDisposable
 {
     private int DeviceId { get; }
     private readonly DeviceIo _deviceIo;
@@ -19,14 +20,14 @@ public class ModbusClient : IDisposable
     private readonly DeviceSignalIo _signalIo;
     private readonly ILogger _logger;
 
-    private record ModbusTarget(IPAddress Address, int Port);
+    private record ModbusTarget(string Address, int Port);
 
     private static readonly ConcurrentDictionary<ModbusTarget, SemaphoreSlim> TargetLockMap = new();
     private DateTime? _lastConnectTime;
     private readonly SemaphoreSlim _targetLock;
     private TimeSpan Timeout { get; }
 
-    public ModbusClient(int deviceId,
+    public ModbusMaster(int deviceId,
         DeviceIo deviceIo,
         DeviceMeasuringIo measuringIo,
         DeviceSignalIo signalIo,
@@ -36,7 +37,7 @@ public class ModbusClient : IDisposable
         _deviceIo = deviceIo;
         _measuringIo = measuringIo;
         _signalIo = signalIo;
-        _logger = Log.ForContext<ModbusClient>();
+        _logger = Log.ForContext<ModbusMaster>();
         Timeout = timeout;
 
         var device = _deviceIo.DeviceMap[DeviceId];
@@ -45,9 +46,9 @@ public class ModbusClient : IDisposable
         _targetLock = targetLock ?? TargetLockMap.GetOrAdd(modbusTarget, new SemaphoreSlim(1, 1));
     }
 
-    private ModbusTcpClient? _client;
+    private ModbusClient? _client;
 
-    private ModbusTcpClient EnsureClientConnected()
+    private ModbusClient EnsureClientConnected()
     {
         var modbusTarget = GetModbusTarget(_deviceIo.DeviceMap[DeviceId]);
         if (_client is not null)
@@ -64,15 +65,42 @@ public class ModbusClient : IDisposable
         }
 
         _lastConnectTime = DateTime.Now;
-        _client = new ModbusTcpClient();
 
         var device = _deviceIo.DeviceMap[DeviceId];
 
-        //client.ReadTimeout = (int)Timeout.TotalMilliseconds;
-        //client.WriteTimeout = (int)Timeout.TotalMilliseconds;
-
-        _client.Connect(new IPEndPoint(IPAddress.Parse(device.ModbusAddress), device.Port),
-            device.BigEndian ? ModbusEndianness.BigEndian : ModbusEndianness.LittleEndian);
+        
+        if (device.ModbusAddress.Contains("COM"))
+        {
+            _logger.Information("Modbus RTU Master Connect to {Port}", device.ModbusAddress);
+            //COM1,19200,8,E,1
+            var parts = device.ModbusAddress.Split(',');
+            var rtuClient = new ModbusRtuClient
+            {
+                BaudRate = int.Parse(parts[1]),
+                Parity = parts[3] switch
+                {
+                    "N" => Parity.None,
+                    "E" => Parity.Even,
+                    "O" => Parity.Odd,
+                    _ => throw new Exception("Invalid parity")
+                },
+                StopBits = parts[4] switch
+                {
+                    "1" => StopBits.One,
+                    "2" => StopBits.Two,
+                    _ => throw new Exception("Invalid stop bits")
+                },
+            };
+            _client = rtuClient;
+            rtuClient.Connect(parts[0]);
+        }
+        else
+        {
+            var tcpClient = new ModbusTcpClient();
+            _client = tcpClient;
+            tcpClient.Connect(new IPEndPoint(IPAddress.Parse(device.ModbusAddress), device.Port),
+                device.BigEndian ? ModbusEndianness.BigEndian : ModbusEndianness.LittleEndian);
+        }
 
         return _client;
     }
@@ -81,7 +109,15 @@ public class ModbusClient : IDisposable
     {
         try
         {
-            _client?.Dispose();
+            switch (_client)
+            {
+                case ModbusTcpClient tcpClient:
+                    tcpClient.Dispose();
+                    break;
+                case ModbusRtuClient rtuClient:
+                    rtuClient.Dispose();
+                    break;
+            }
         }
         catch (Exception ex)
         {
@@ -160,7 +196,7 @@ public class ModbusClient : IDisposable
     }
 
     private ModbusTarget GetModbusTarget(IDevice device) =>
-        new(IPAddress.Parse(device.ModbusAddress), device.Port);
+        new(device.ModbusAddress, device.Port);
 
     public List<(DeviceSignalIo.IDeviceSignal, bool)> ReadSignal(CancellationToken cancellationToken)
     {
@@ -218,7 +254,7 @@ public class ModbusClient : IDisposable
         {
             _targetLock.Release();
         }
-        
+
 
         return recordList;
     }
@@ -271,7 +307,7 @@ public class ModbusClient : IDisposable
 
         return recordList;
     }
-    
+
     private decimal ReadInputReg(IDevice device, IDeviceMeasuring measuring)
     {
         var dataTypeDef =
@@ -320,14 +356,18 @@ public class ModbusClient : IDisposable
             case DeviceMeasuringIo.ModbusDataType.Int16:
                 var int16Memory = _client.ReadInputRegisters<short>((byte)device.SlaveId,
                     (ushort)measuring.Address, 1);
-                
-                return measuring.MidEndian ? new decimal(BinaryPrimitives.ReverseEndianness(int16Memory[0])) : new decimal(int16Memory[0]);
+
+                return measuring.MidEndian
+                    ? new decimal(BinaryPrimitives.ReverseEndianness(int16Memory[0]))
+                    : new decimal(int16Memory[0]);
 
             case DeviceMeasuringIo.ModbusDataType.Uint16:
                 var uint16Memory = _client.ReadInputRegisters<ushort>((byte)device.SlaveId,
                     (ushort)measuring.Address, 1);
-                
-                return measuring.MidEndian ? new decimal(BinaryPrimitives.ReverseEndianness(uint16Memory[0])) : new decimal(uint16Memory[0]);
+
+                return measuring.MidEndian
+                    ? new decimal(BinaryPrimitives.ReverseEndianness(uint16Memory[0]))
+                    : new decimal(uint16Memory[0]);
 
             case DeviceMeasuringIo.ModbusDataType.Int32:
                 if (measuring.MidEndian == false)
@@ -398,12 +438,16 @@ public class ModbusClient : IDisposable
             case DeviceMeasuringIo.ModbusDataType.Int16:
                 var int16Memory = _client.ReadHoldingRegisters<short>((byte)device.SlaveId,
                     (ushort)measuring.Address, 1);
-                return measuring.MidEndian ? new decimal(BinaryPrimitives.ReverseEndianness(int16Memory[0])) : new decimal(int16Memory[0]);
+                return measuring.MidEndian
+                    ? new decimal(BinaryPrimitives.ReverseEndianness(int16Memory[0]))
+                    : new decimal(int16Memory[0]);
 
             case DeviceMeasuringIo.ModbusDataType.Uint16:
                 var uint16Memory = _client.ReadHoldingRegisters<ushort>((byte)device.SlaveId,
                     (ushort)measuring.Address, 1);
-                return measuring.MidEndian ? new decimal(BinaryPrimitives.ReverseEndianness(uint16Memory[0])) : new decimal(uint16Memory[0]);
+                return measuring.MidEndian
+                    ? new decimal(BinaryPrimitives.ReverseEndianness(uint16Memory[0]))
+                    : new decimal(uint16Memory[0]);
 
             case DeviceMeasuringIo.ModbusDataType.Int32:
                 if (measuring.MidEndian == false)
@@ -440,7 +484,7 @@ public class ModbusClient : IDisposable
                 if (!onlyOpFilter.Value && measuring.Sid == MonitorTypeCode.G11.ToString())
                     continue;
             }
-            
+
             recordMap[measuring] = null;
         }
 
@@ -516,7 +560,7 @@ public class ModbusClient : IDisposable
                     signalList.AddRange(from discrete in discreteInputs
                         let value = discreteBits[discrete.Address + discrete.Offset - start]
                         select (discrete, value));
-                }    
+                }
             }
         }
         catch (Exception ex)
@@ -532,15 +576,15 @@ public class ModbusClient : IDisposable
         {
             _targetLock.Release();
         }
-            
+
         // If the operation is cancelled, dispose the client
-        if(cancellationToken.IsCancellationRequested)
+        if (cancellationToken.IsCancellationRequested)
             DisposeClient();
-        
-        var list = recordMap.Select(pair=>(pair.Key, pair.Value))
+
+        var list = recordMap.Select(pair => (pair.Key, pair.Value))
             .Where(pair => pair.Item2.HasValue)
             .ToList();
-        
+
         return (list, signalList);
     }
 
