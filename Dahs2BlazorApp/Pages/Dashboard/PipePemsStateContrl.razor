@@ -36,7 +36,7 @@
                     <tr>
                         <td>@mt.Name</td>
                         <td>@FormatValue(rawRecord)</td>
-                        <td class="@($"ps-1 {rawRecord.ToRecordStatus(mt).ToCss()}")">
+                        <td class="@($"ps-1 {rawRecord.ToRecordStatus(mt, checkOverRange:true).ToCss()}")">
                             <strong>@FormatStatus(rawRecord)</strong>
                         </td>
                     </tr>

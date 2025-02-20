@@ -23,10 +23,10 @@
             {
                 <tr>
                     <th>@($"{mt.Name}")</th>
-                    <td class="@($"{GetPipeRawRecord(pipe.Id, mt.Sid).ToRecordStatus(mt).ToBlinkCss()}")">
+                    <td class="@($"{GetPipeRawRecord(pipe.Id, mt.Sid).ToRecordStatus(mt, checkOverRange:false).ToBlinkCss()}")">
                         @FormatValue(mt.Sid, GetPipeRawRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit
                     </td>
-                    <td class="@($"{GetPipeAdjustedRecord(pipe.Id, mt.Sid).ToRecordStatus(mt).ToBlinkCss()}")">
+                    <td class="@($"{GetPipeAdjustedRecord(pipe.Id, mt.Sid).ToRecordStatus(mt, checkOverRange:true).ToBlinkCss()}")">
                         @FormatValue(mt.Sid, GetPipeAdjustedRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit2
                     </td>
                     <td>@mt.Standard</td>
@@ -38,7 +38,7 @@
             {
                 <tr>
                     <th>@($"{mt.Name}")</th>
-                    <td class="@($"{GetPipeRawRecord(pipe.Id, mt.Sid).ToRecordStatus(mt).ToBlinkCss()}")">
+                    <td class="@($"{GetPipeRawRecord(pipe.Id, mt.Sid).ToRecordStatus(mt, checkOverRange:true).ToBlinkCss()}")">
                         @FormatValue(mt.Sid, GetPipeRawRecord(pipe.Id, mt.Sid))&nbsp;@mt.Unit
                     </td>
                     <td></td>
@@ -130,13 +130,13 @@
     {
         var cems = PipeIo.Pipes.Any(pipe => MonitorTypeIo.GetCemsMonitorTypes(pipe.Id)
             .Select(mt => GetPipeAdjustedRecord(pipe.Id, mt.Sid)
-                .ToRecordStatus(mt))
+                .ToRecordStatus(mt, checkOverRange:true))
             .Any(recordStatus => recordStatus is Helper.RecordStatus.Abnormal
                 or Helper.RecordStatus.OverRange));
 
         var pems = PipeIo.Pipes.Any(pipe => MonitorTypeIo.GetPemsMonitorTypes(pipe.Id)
             .Select(mt => GetPipeRawRecord(pipe.Id, mt.Sid)
-                .ToRecordStatus(mt))
+                .ToRecordStatus(mt, checkOverRange:true))
             .Any(recordStatus => recordStatus is Helper.RecordStatus.Abnormal
                 or Helper.RecordStatus.OverRange));
 
