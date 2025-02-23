@@ -10,9 +10,8 @@ public partial class DataCollectManager
 
     private readonly ConcurrentDictionary<MonitorTypeKey, string> _monitorTypeStatusMap = new();
 
-    private bool emExitOpen = false;
-    private DateTime emExitLastOpenTime = DateTime.MaxValue;
-
+    private bool _emExitOpen = false;
+    
     private void GenerateAlarms(int pipeId, DateTime createDate, IReadOnlyDictionary<string, Record> recordMap)
     {
         var alarmsStatus = new[] { "11", "32", "10" };
@@ -55,31 +54,25 @@ public partial class DataCollectManager
         }
 
         // LINE notify for EmExit
-        if (recordMap.TryGetValue(MonitorTypeCode.EmExit.ToString(), out var emExitRecord))
+        if (!recordMap.TryGetValue(MonitorTypeCode.EmExit.ToString(), out var emExitRecord)) return;
+        
+        switch (emExitRecord.Value)
         {
-            if (!emExitOpen)
+            case null:
+                return;
+            case > 0:
+                _emExitOpen = true;
+                _ = _lineNotify.Notify("警急排放口開啟");
+                break;
+            default:
             {
-                if (emExitRecord.Value.GetValueOrDefault(0) != 0)
+                if (_emExitOpen)
                 {
-                    if (emExitLastOpenTime > DateTime.Now)
-                    {
-                        emExitLastOpenTime = DateTime.Now;    
-                    }
-                    else
-                    {
-                        _ = _lineNotify.Notify("警急排放口開啟");
-                        emExitOpen = true;    
-                    }
-                }
-            }
-            else
-            {
-                if (emExitRecord.Value.GetValueOrDefault(0) == 0)
-                {
+                    _emExitOpen = false;
                     _ = _lineNotify.Notify("警急排放口關閉");
-                    emExitOpen = false;
-                    emExitLastOpenTime = DateTime.MaxValue;
                 }
+
+                break;
             }
         }
     }

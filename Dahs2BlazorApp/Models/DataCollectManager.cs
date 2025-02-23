@@ -195,10 +195,11 @@ public partial class DataCollectManager : IHostedService, IDisposable
             }
 
             var adjustCreateDate = createDate.AddMinutes(-1);
+            GenerateAlarms(pipeId, adjustCreateDate, rawRecordMap);
+            
             if (adjustCreateDate.Second == 0)
             {
                 await _measuringAdjust.CalculateFix1Min(pipeId, adjustCreateDate);
-                GenerateAlarms(pipeId, adjustCreateDate, rawRecordMap);
             }
 
             if (adjustCreateDate is { Minute: 0, Second: 0 })
