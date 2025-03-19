@@ -61,8 +61,11 @@ public partial class DataCollectManager
             case null:
                 return;
             case > 0:
-                _emExitOpen = true;
-                _ = _lineNotify.Notify("警急排放口開啟");
+                if (!_emExitOpen)
+                {
+                    _emExitOpen = true;
+                    _ = _lineNotify.Notify("警急排放口開啟");    
+                }
                 break;
             default:
             {
