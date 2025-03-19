@@ -151,13 +151,7 @@
 
     private List<IMonitorType> GetPemsMonitorTypes(int pipeId)
     {
-        var skipMonitorTypes = new List<string>
-        {
-            MonitorTypeCode.BlowerSpeed1.ToString(),
-            MonitorTypeCode.BlowerSpeed2.ToString(),
-            MonitorTypeCode.BlowerSpeed3.ToString(),
-            MonitorTypeCode.BlowerSpeed4.ToString(),
-        };
+        var skipMonitorTypes = Array.Empty<string>();
         return MonitorTypeIo.GetPemsMonitorTypes(pipeId)
             .Where(mt=>!skipMonitorTypes.Contains(mt.Sid)).ToList();
     }
@@ -195,12 +189,6 @@
                     var adjustedMap =
                         MeasuringAdjust.Get1MinAdjustedData(pipe.Id,
                             createDate, monitorTypes, rawTimeDataMap, false);
-
-                    if (SiteConfig.PipeMonitorTypes[pipe.Id].Count(mtDef => mtDef.Sid == MonitorTypeCode.G11) > 0)
-                    {
-                        adjustedMap["G11"] =
-                            MeasuringAdjust.GetAdjustRawOpRecord(pipe.Id, _pipeRawRecordMap[pipe.Id]["G11"]);
-                    }
 
                     _pipeAdjustedRecordMap[pipe.Id] = adjustedMap;
                 }

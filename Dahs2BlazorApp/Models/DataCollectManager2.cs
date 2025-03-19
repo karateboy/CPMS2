@@ -52,29 +52,7 @@ public partial class DataCollectManager
 
             _monitorTypeStatusMap[mtKey] = record.Status;
         }
-
-        // LINE notify for EmExit
-        if (!recordMap.TryGetValue(MonitorTypeCode.EmExit.ToString(), out var emExitRecord)) return;
         
-        switch (emExitRecord.Value)
-        {
-            case null:
-                return;
-            case > 0:
-                _emExitOpen = true;
-                _ = _lineNotify.Notify("警急排放口開啟");
-                break;
-            default:
-            {
-                if (_emExitOpen)
-                {
-                    _emExitOpen = false;
-                    _ = _lineNotify.Notify("警急排放口關閉");
-                }
-
-                break;
-            }
-        }
     }
 
     private void OutputAdjustValues(int pipeId, IReadOnlyDictionary<string, Record> recordMap)

@@ -230,36 +230,13 @@
     List<string> mtList =
         new()
         {
-            MonitorTypeCode.OpTemp.ToString(),
-            MonitorTypeCode.BurnerTemp.ToString(),
-            MonitorTypeCode.SecondTemp.ToString(),
-            MonitorTypeCode.A24.ToString(),
-            MonitorTypeCode.E36.ToString(),
-            MonitorTypeCode.BFTemp.ToString(),
-            MonitorTypeCode.BFPressDiff.ToString(),
-            MonitorTypeCode.BFWeightMod.ToString(),
-            MonitorTypeCode.WashFlow.ToString(),
-            MonitorTypeCode.PH.ToString(),
-            MonitorTypeCode.WashTowerPressDiff.ToString(),
-            MonitorTypeCode.F48.ToString(),
-            MonitorTypeCode.WaterQuantity.ToString(),
         };
 
     record NormalRange(decimal? Low = null, decimal? High = null);
 
     Dictionary<string, NormalRange> mtRangeMap = new()
     {
-        { MonitorTypeCode.BurnerTemp.ToString(), new NormalRange(850, 1150) },
-        { MonitorTypeCode.SecondTemp.ToString(), new NormalRange(850) },
-        { MonitorTypeCode.A24.ToString(), new NormalRange(null, 100) },
-        { MonitorTypeCode.E36.ToString(), new NormalRange(6) },
-        { MonitorTypeCode.BFTemp.ToString(), new NormalRange(150, 200) },
-        { MonitorTypeCode.BFPressDiff.ToString(), new NormalRange(10, 70) },
-        { MonitorTypeCode.BFWeightMod.ToString(), new NormalRange(1.58m, 2.45m) },
-        { MonitorTypeCode.WashFlow.ToString(), new NormalRange(900, 1200) },
-        { MonitorTypeCode.PH.ToString(), new NormalRange(7, 9) },
-        { MonitorTypeCode.WashTowerPressDiff.ToString(), new NormalRange(10, 80) },
-        { MonitorTypeCode.F48.ToString(), new NormalRange(100, 230) }
+        
     };
 
     private Dictionary<DateTime, Dictionary<string, Record>> _dailyRecordMap = new();
@@ -275,9 +252,6 @@
 
         if (mt.Sid == "OpTemp")
             return "";
-
-        if (mt.Sid == MonitorTypeCode.BFWeightMod.ToString())
-            return "1.58~2.45";
 
         if (mt.Sid == "F48")
         {

@@ -58,19 +58,7 @@ public class ExcelUtility
         FormatCellValue(cell, start.Year - 1911, start.Month, start.Day);
         var mtList = new[]
         {
-            MonitorTypeCode.OpTemp.ToString(),
-            MonitorTypeCode.BurnerTemp.ToString(),
-            MonitorTypeCode.SecondTemp.ToString(),
-            MonitorTypeCode.A24.ToString(),
-            MonitorTypeCode.E36.ToString(),
-            MonitorTypeCode.BFTemp.ToString(),
-            MonitorTypeCode.BFPressDiff.ToString(),
-            MonitorTypeCode.BFWeightMod.ToString(),
-            MonitorTypeCode.WashFlow.ToString(),
-            MonitorTypeCode.PH.ToString(),
-            MonitorTypeCode.WashTowerPressDiff.ToString(),
-            MonitorTypeCode.F48.ToString(),
-            MonitorTypeCode.WaterQuantity.ToString(),
+            ""
         };
         foreach (var (mt, mtIndex) in mtList.Select((mt, idx) => (mt, idx)))
         {

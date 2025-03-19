@@ -4,39 +4,16 @@ namespace Dahs2BlazorApp.Configuration;
 
 public enum MonitorTypeCode
 {
-    A22,
-    A23,
-    A231,
-    A232,
-    A24,
-    A26,
-    E36,
-    E37,
-    F48,
-    G11,
-    W00,
-    T59,
-    T60,
-    Press,
-    RoomTemp,
-
-    // pollutions prevention codes
-    SecondTemp,
-    BFTemp,
-    BFPressDiff,
-    BFWeightMod,
-    WashFlow,
-    WaterQuantity,
-    BlowerSpeed,
-    OpTemp,
-    BurnerTemp,
-    BlowerSpeed1,
-    BlowerSpeed2,
-    BlowerSpeed3,
-    BlowerSpeed4,
-    EmExit,
-    WashTowerPressDiff,
-    PH
+    MT1,
+    MT2,
+    MT3,
+    MT4,
+    MT5,
+    MT6,
+    MT7,
+    MT8,
+    MT9,
+    MT10,
 }
 
 public record TypeInfo(string Name, string Unit, string Unit1);
@@ -101,16 +78,13 @@ public record TypeDefinition(
 
 public static class SiteConfig
 {
-    public static string SiteName => "易增CPMS";
+    public static string SiteName => "CPMS核心系統";
 
     private static readonly DateTime CommitDate = DateTime.Parse(ThisAssembly.Git.CommitDate);
 
     public static string Version =>
         $"{ThisAssembly.Git.Branch} v{ThisAssembly.Git.BaseTag}-{ThisAssembly.Git.Commits} ({ThisAssembly.Git.Commit} {CommitDate:g})";
-
-    // 預設水分 10%
-    public static decimal DefaultWater => 10m;
-
+    
     public static readonly IList<Pipe> DefaultPipes = new List<Pipe>
     {
         new()
@@ -121,72 +95,29 @@ public static class SiteConfig
         },
     };
 
-    public static List<MonitorTypeCode> CemsMonitorTypeCodes = new()
+    public static readonly List<MonitorTypeCode> CemsMonitorTypeCodes = new()
     {
-        MonitorTypeCode.A22,
-        MonitorTypeCode.A23,
-        MonitorTypeCode.A231,
-        MonitorTypeCode.A232,
-        MonitorTypeCode.A24,
-        MonitorTypeCode.A26,
-        MonitorTypeCode.E36,
-        MonitorTypeCode.E37,
-        MonitorTypeCode.F48,
-        MonitorTypeCode.G11,
-        MonitorTypeCode.W00,
-        MonitorTypeCode.T59,
-        MonitorTypeCode.T60,
-        MonitorTypeCode.Press,
-        MonitorTypeCode.RoomTemp
+        MonitorTypeCode.MT1,
+        MonitorTypeCode.MT2,
+        MonitorTypeCode.MT3,
+        MonitorTypeCode.MT4,
+        MonitorTypeCode.MT5,
     };
 
     public static readonly Dictionary<MonitorTypeCode, TypeInfo> TypeCodeNameMap = new()
     {
-        { MonitorTypeCode.A22, new TypeInfo("二氧化硫", "ppm", "ppm") },
-        { MonitorTypeCode.A23, new TypeInfo("氮氧化物", "ppm", "ppm") },
-        { MonitorTypeCode.A231, new TypeInfo("一氧化氮", "ppm", "ppm") },
-        { MonitorTypeCode.A232, new TypeInfo("二氧化氮", "ppm", "ppm") },
-        { MonitorTypeCode.A24, new TypeInfo("一氧化碳", "ppm", "ppm") },
-        { MonitorTypeCode.A26, new TypeInfo("氯化氫", "ppm", "ppm") },
-        { MonitorTypeCode.E36, new TypeInfo("氧氣", "%", "%") },
-        { MonitorTypeCode.E37, new TypeInfo("二氧化碳", "%", "%") },
-        { MonitorTypeCode.F48, new TypeInfo("流速/流率", "m/sec", "Nm\u00b3/min") },
-        { MonitorTypeCode.G11, new TypeInfo("不透光率", "%", "%") },
-        { MonitorTypeCode.W00, new TypeInfo("水份", "%", "%") },
-        { MonitorTypeCode.T59, new TypeInfo("溫度", "℃", "℃") },
-        { MonitorTypeCode.T60, new TypeInfo("棧房溫度", "℃", "℃") },
-        { MonitorTypeCode.Press, new TypeInfo("壓力", "mBar", "mBar") },
-        { MonitorTypeCode.RoomTemp, new TypeInfo("室溫", "℃", "℃") },
-        { MonitorTypeCode.SecondTemp, new TypeInfo("二次出口溫度", "℃", "℃") },
-        { MonitorTypeCode.BFTemp, new TypeInfo("BF入口溫度", "℃", "℃") },
-        { MonitorTypeCode.BFPressDiff, new TypeInfo("BF壓差", "mmH2O", "mmH2O") },
-        { MonitorTypeCode.BFWeightMod, new TypeInfo("BF稱種模組", "kg", "kg") },
-        { MonitorTypeCode.WashFlow, new TypeInfo("洗滌流率", "l/h", "l/h") },
-        { MonitorTypeCode.PH, new TypeInfo("PH值", "-", "-") },
-        { MonitorTypeCode.WaterQuantity, new TypeInfo("換水量", "噸", "噸") },
-        { MonitorTypeCode.BlowerSpeed, new TypeInfo("鼓風機轉速", "rpm", "rpm") },
-        { MonitorTypeCode.OpTemp, new TypeInfo("操作溫度", "℃", "℃") },
-        { MonitorTypeCode.BurnerTemp, new TypeInfo("焚化爐出口溫度", "℃", "℃") },
-        { MonitorTypeCode.BlowerSpeed1, new TypeInfo("鼓風機1轉速", "rpm", "rpm") },
-        { MonitorTypeCode.BlowerSpeed2, new TypeInfo("鼓風機2轉速", "rpm", "rpm") },
-        { MonitorTypeCode.BlowerSpeed3, new TypeInfo("鼓風機3轉速", "rpm", "rpm") },
-        { MonitorTypeCode.BlowerSpeed4, new TypeInfo("鼓風機4轉速", "rpm", "rpm") },
-        { MonitorTypeCode.EmExit, new TypeInfo("緊急排放口", "℃", "℃") },
-        { MonitorTypeCode.WashTowerPressDiff, new TypeInfo("洗滌塔壓差", "mmH2O", "mmH2O") },
+        { MonitorTypeCode.MT1, new TypeInfo("測項1", "ppm", "ppm") },
+        { MonitorTypeCode.MT2, new TypeInfo("測項2", "ppm", "ppm") },
+        { MonitorTypeCode.MT3, new TypeInfo("測項3", "ppm", "ppm") },
+        { MonitorTypeCode.MT4, new TypeInfo("測項4", "ppm", "ppm") },
+        { MonitorTypeCode.MT5, new TypeInfo("測項5", "ppm", "ppm") },
+        { MonitorTypeCode.MT6, new TypeInfo("測項6", "ppm", "ppm") },
+        { MonitorTypeCode.MT7, new TypeInfo("測項7", "ppm", "ppm") },
+        { MonitorTypeCode.MT8, new TypeInfo("測項8", "ppm", "ppm") },
+        { MonitorTypeCode.MT9, new TypeInfo("測項9", "ppm", "ppm") },
+        { MonitorTypeCode.MT10, new TypeInfo("測項10", "ppm", "ppm") }
     };
-
-    private static decimal? GetGteZero(decimal? value)
-    {
-        if (value is null)
-            return null;
-
-        return value < 0 ? 0 : value;
-    }
-
-    private static readonly CalculateFunction A23Calculation = new(
-        new List<string> { "A231", "A232" },
-        values => GetGteZero(values[0]) + GetGteZero(values[1]));
-
+    
     public static readonly Dictionary<int, List<TypeDefinition>> PipeMonitorTypes =
         new()
         {
@@ -195,126 +126,65 @@ public static class SiteConfig
                 1, new List<TypeDefinition>
                 {
                     new(
-                        Sid: MonitorTypeCode.A26,
+                        Sid: MonitorTypeCode.MT1,
                         RangeMin: 0m,
-                        RangeMax: 500m,
-                        AdjustFactor: new AdjustFactor(false, true)
-                    ),
-                    new(
-                        Sid: MonitorTypeCode.A231,
-                        RangeMin: 0m,
-                        RangeMax: 500m,
-                        AdjustFactor: new AdjustFactor(false, true)
-                    ),
-                    new(
-                        Sid: MonitorTypeCode.A232,
-                        RangeMin: 0m,
-                        RangeMax: 500m,
-                        AdjustFactor: new AdjustFactor(false, true)
-                    ),
-                    new(
-                        Sid: MonitorTypeCode.A23,
-                        RangeMin: 0m,
-                        RangeMax: 1000m,
-                        AdjustFactor: new AdjustFactor(false, true),
-                        Calculation: A23Calculation
-                    ),
-                    new(
-                        Sid: MonitorTypeCode.A22,
-                        RangeMin: 0m,
-                        RangeMax: 500m,
-                        new AdjustFactor(false, true)
-                    ),
-                    new(
-                        Sid: MonitorTypeCode.A24,
-                        RangeMin: 0m,
-                        RangeMax: 500m,
-                        new AdjustFactor(false, true)
-                    ),
-                    new(
-                        Sid: MonitorTypeCode.W00,
-                        RangeMin: 0m,
-                        RangeMax: 25m,
-                        new AdjustFactor(false, false)
-                    ),
-                    new(
-                        Sid: MonitorTypeCode.E36,
-                        RangeMin: 0m,
-                        RangeMax: 25m,
+                        RangeMax: 100000m,
                         AdjustFactor: new AdjustFactor(false, false)
-                    ),
+                    ),  // 0-100000
                     new(
-                        Sid: MonitorTypeCode.E37,
+                        Sid: MonitorTypeCode.MT2,
                         RangeMin: 0m,
-                        RangeMax: 25m,
+                        RangeMax: 100000m,
                         AdjustFactor: new AdjustFactor(false, false)
-                    ),
+                    ),  // 0-100000
                     new(
-                        Sid: MonitorTypeCode.F48,
+                        Sid: MonitorTypeCode.MT3,
                         RangeMin: 0m,
-                        RangeMax: 40m,
-                        AdjustFactor: new AdjustFactor(false, false),
-                        Multiplier: decimal.Divide(40m, 65535m)
-                    ),
+                        RangeMax: 100000m,
+                        AdjustFactor: new AdjustFactor(false, false)
+                    ),  // 0-100000
                     new(
-                        Sid: MonitorTypeCode.G11,
+                        Sid: MonitorTypeCode.MT4,
                         RangeMin: 0m,
-                        RangeMax: 100m,
-                        AdjustFactor: new AdjustFactor(false, false),
-                        Multiplier: decimal.Divide(100m, 65535m)
-                    ),
+                        RangeMax: 100000m,
+                        AdjustFactor: new AdjustFactor(false, false)
+                    ),  // 0-100000
                     new(
-                        Sid: MonitorTypeCode.T59,
+                        Sid: MonitorTypeCode.MT5,
                         RangeMin: 0m,
-                        RangeMax: 300m,
-                        AdjustFactor: new AdjustFactor(false, false),
-                        Multiplier: decimal.Divide(300m, 65535m)
-                    ),
+                        RangeMax: 100000m,
+                        AdjustFactor: new AdjustFactor(false, false)
+                    ),  // 0-100000
                     new(
-                        Sid: MonitorTypeCode.T60,
+                        Sid: MonitorTypeCode.MT6,
                         RangeMin: 0m,
-                        RangeMax: 50m,
-                        AdjustFactor: new AdjustFactor(false, false),
-                        Multiplier: decimal.Divide(50m, 65535m)
-                    ),
-                    new(Sid: MonitorTypeCode.SecondTemp,
-                        RangeMin: 0m, RangeMax: 1000m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BFTemp, RangeMin: 0m, RangeMax: 300m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BFPressDiff, RangeMin: 0m, RangeMax: 70m,
-                        AdjustFactor: new AdjustFactor(false, false),
-                        Multiplier: 0.1m),
-                    new(Sid: MonitorTypeCode.BFWeightMod, RangeMin: 0m, RangeMax: 70m,
-                        AdjustFactor: new AdjustFactor(false, false),
-                        Multiplier: 0.1m),
-                    new(Sid: MonitorTypeCode.WashFlow, RangeMin: 0m, RangeMax: 1200m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.WaterQuantity, RangeMin: 0m, RangeMax: decimal.MaxValue,
-                        AdjustFactor: new AdjustFactor(false, false),
-                        Multiplier: 0.01m),
-                    new(Sid: MonitorTypeCode.BlowerSpeed, RangeMin: 0m, RangeMax: 2000m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.OpTemp, RangeMin: 0m, RangeMax: 950m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BurnerTemp, RangeMin: 0m, RangeMax: 1300m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BlowerSpeed1, RangeMin: 0m, RangeMax: 3000m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BlowerSpeed2, RangeMin: 0m, RangeMax: 3000m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BlowerSpeed3, RangeMin: 0m, RangeMax: 3000m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.BlowerSpeed4, RangeMin: 0m, RangeMax: 3000m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.EmExit, RangeMin: 0m, RangeMax: 2m,
-                        AdjustFactor: new AdjustFactor(false, false)),
-                    new(Sid: MonitorTypeCode.WashTowerPressDiff, RangeMin: 0m, RangeMax: 80m,
-                        AdjustFactor: new AdjustFactor(false, false),
-                        Multiplier: 0.1m),
-                    new(Sid: MonitorTypeCode.PH, RangeMin: 6m, RangeMax: 9.5m,
-                        AdjustFactor: new AdjustFactor(false, false),
-                        Multiplier: 0.01m)
+                        RangeMax: 100000m,
+                        AdjustFactor: new AdjustFactor(false, false)
+                    ),  // 0-100000
+                    new(
+                        Sid: MonitorTypeCode.MT7,
+                        RangeMin: 0m,
+                        RangeMax: 100000m,
+                        AdjustFactor: new AdjustFactor(false, false)
+                    ),  // 0-100000
+                    new(
+                        Sid: MonitorTypeCode.MT8,
+                        RangeMin: 0m,
+                        RangeMax: 100000m,
+                        AdjustFactor: new AdjustFactor(false, false)
+                    ),  // 0-100000
+                    new(
+                        Sid: MonitorTypeCode.MT9,
+                        RangeMin: 0m,
+                        RangeMax: 100000m,
+                        AdjustFactor: new AdjustFactor(false, false)
+                    ),  // 0-100000
+                    new(
+                        Sid: MonitorTypeCode.MT10,
+                        RangeMin: 0m,
+                        RangeMax: 100000m,
+                        AdjustFactor: new AdjustFactor(false, false)
+                    ),  // 0-100000
                 }
             },
         };

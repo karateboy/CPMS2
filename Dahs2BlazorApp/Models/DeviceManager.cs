@@ -80,30 +80,7 @@ public static class DeviceManager
         var (dataList, _) = deviceCtl.ModbusMaster.ReadDataAndSignal(null, includeSignal: false, cancellationToken);
         return dataList;
     }
-
-    private static Task ReadMitsubishiPLC(int pipeid, CancellationToken cancellationToken)
-    {
-        return Task.Run(() =>
-        {
-            //1、Instantiate the client-enter the correct IP and port
-            MitsubishiClient client = new MitsubishiClient(MitsubishiVersion.A_1E, "192.168.2.10", 2000);
-            
-            client.Open();
-            //3、Read operation
-            var result = client.ReadUInt32("W0");
-            
-            var record = new Record
-            {
-                Value = result.IsSucceed ? Convert.ToDecimal(result.Value) : null,
-                Status = result.IsSucceed ? "10" : "32"
-            };
-
-            DataCollectManager.UpdatePipeMonitorTypeMap(pipeid, 100, MonitorTypeCode.SecondTemp.ToString(), record);
-            
-            client.Close();
-        }, cancellationToken);
-    }
-
+    
     public static Task ReadPipeDevices(int pipeId, TimeSpan timeout)
     {
         if (_deviceIo == null) return Task.CompletedTask;

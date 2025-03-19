@@ -178,7 +178,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
 
             var rawRecordMap = GenerateRecordMap(pipeId, createDate, monitorTypes, deviceRecordMap);
 
-            var water = rawRecordMap[MonitorTypeCode.W00.ToString()].Value ?? 10m;
+            var water = 10m;
             if (createDate.Second == 0)
             {
                 await _recordIo.InsertRawData(pipeId, createDate, water, rawRecordMap);
@@ -265,265 +265,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
     }
 
     record UploadMonitorType(string MonitorType, string fmt, string equip);
-
-    static private readonly List<UploadMonitorType> UploadList = new()
-    {
-        new(MonitorTypeCode.SecondTemp.ToString(), "F4", "E502"),
-        new(MonitorTypeCode.BFTemp.ToString(), "E4", "A501"),
-        new(MonitorTypeCode.BFPressDiff.ToString(), "D1", "A501"),
-        new(MonitorTypeCode.BFWeightMod.ToString(), "O1", "A501"),
-        new(MonitorTypeCode.WashFlow.ToString(), "E8", "A502"),
-        new(MonitorTypeCode.PH.ToString(), "E7", "A502"),
-        new(MonitorTypeCode.WaterQuantity.ToString(), "W1", "A502"),
-        new(MonitorTypeCode.OpTemp.ToString(), "F3", "E501"),
-        new(MonitorTypeCode.BurnerTemp.ToString(), "F4", "E501"),
-        new(MonitorTypeCode.EmExit.ToString(), "A1", "E502"),
-        new(MonitorTypeCode.WashTowerPressDiff.ToString(), "D1", "A502"),
-        new(MonitorTypeCode.E37.ToString(), "37", "P501"),
-        new(MonitorTypeCode.E36.ToString(), "36", "P501"),
-        new(MonitorTypeCode.F48.ToString(), "48", "P501"),
-    };
-
-    private Dictionary<string, UploadMonitorType> UpdateMonitorTypeMap =
-        UploadList.ToDictionary(x => x.MonitorType, y => y);
-
-    private async Task GenerateUploadFile(DateTime current)
-    {
-        try
-        {
-            if (current.Minute % 5 != 0)
-                return;
-
-            //var siteInfo = await _siteInfoIo.GetSiteInfo();
-            var mtList = UploadList.Select(x => x.MonitorType).ToList();
-
-            var uploadFile = new CpmsUploadFile("H5201141", current, "H74");
-            var timeDataMap = await _measuringAdjust.Get5MinData(1, current, current.AddMinutes(1));
-            var dataMap = timeDataMap[current];
-
-            foreach (var mt in mtList)
-            {
-                var uploadMT = UpdateMonitorTypeMap[mt];
-                if (dataMap.TryGetValue(mt, out var record))
-                    uploadFile.AddEntry($"9{uploadMT.fmt}", uploadMT.equip, current, convertValue(mt, record),
-                        record.Status);
-                else
-                    uploadFile.AddEntry($"9{uploadMT.fmt}", uploadMT.equip, current, "", "32");
-            }
-
-            if (current.Minute == 0)
-            {
-                var hourDataMap =
-                    await _recordIo.GetData(TableType.AdjustedData60, 1, mtList, current, current.AddMinutes(1));
-                foreach (var mt in mtList)
-                {
-                    var uploadMT = UpdateMonitorTypeMap[mt];
-                    if (hourDataMap[current].TryGetValue(mt, out var record))
-                        uploadFile.AddEntry($"2{uploadMT.fmt}", uploadMT.equip, current, convertHourValue(mt, record),
-                            record.Status);
-                    else
-                        uploadFile.AddEntry($"2{uploadMT.fmt}", uploadMT.equip, current, "", "32");
-                }
-            }
-
-            var path = await uploadFile.Flush();
-            CpmsUploadFile.UploadAndBackup(path, current);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GenerateUploadFile failed");
-        }
-
-        string convertValue(string mt, Record record)
-        {
-            return mt switch
-            {
-                "F48" => record.Value.HasValue ? (record.Value.Value * 5).ToString("F2") : "",
-                _ => record.Value.HasValue ? record.Value.Value.ToString("F2") : ""
-            };
-        }
-
-        string convertHourValue(string mt, Record record)
-        {
-            return mt switch
-            {
-                "F48" => record.Value.HasValue ? (record.Value.Value * 60).ToString("F2") : "",
-                _ => record.Value.HasValue ? record.Value.Value.ToString("F2") : ""
-            };
-        }
-    }
-
-    private void ReadPemsDevice(bool param1, TimeSpan interval, TimeSpan timeout,
-        CancellationToken cancellationToken)
-    {
-        _ = Task.Run(ReadMitsubishiPLC, cancellationToken);
-    }
-
-    private async Task ReadFakePLC()
-    {
-        UpdateRecord(MonitorTypeCode.SecondTemp, 1);
-        UpdateRecord(MonitorTypeCode.BFTemp, 2);
-        UpdateRecord(MonitorTypeCode.BFPressDiff, decimal.Divide(4, 10m));
-        UpdateRecord(MonitorTypeCode.BFWeightMod, decimal.Divide(4, 10m));
-        UpdateRecord(MonitorTypeCode.WashFlow, 5);
-        UpdateRecord(MonitorTypeCode.PH, decimal.Divide(6, 100));
-        UpdateRecord(MonitorTypeCode.BlowerSpeed, 7);
-        UpdateRecord(MonitorTypeCode.OpTemp, 8);
-        UpdateRecord(MonitorTypeCode.BurnerTemp, 9);
-        UpdateRecord(MonitorTypeCode.BlowerSpeed1, 10);
-        UpdateRecord(MonitorTypeCode.BlowerSpeed2, 11);
-        UpdateRecord(MonitorTypeCode.BlowerSpeed3, 12);
-        UpdateRecord(MonitorTypeCode.BlowerSpeed4, 13);
-        UpdateRecord(MonitorTypeCode.EmExit, 14);
-
-        void UpdateRecord(MonitorTypeCode mtc, decimal value)
-        {
-            const int pipeId = 1;
-            const int deviceId = 100;
-            UpdatePipeMonitorTypeMap(pipeId, deviceId, mtc.ToString(),
-                new Record
-                {
-                    Value = value,
-                    Status = _monitorTypeIo.PipeMonitorTypeMap[pipeId][mtc.ToString()].OverrideState,
-                    Baf = 1
-                });
-        }
-    }
-
-    private int _lastWaterQuantity = 0;
-
-    private async Task ReadMitsubishiPLC()
-    {
-        _logger.LogDebug("ReadMitsubishiPLC");
-        MelsecMcUdp plc = new MelsecMcUdp("192.168.2.10", 2000);
-        try
-        {
-            var ret = await plc.ConnectServerAsync();
-            if (ret.IsSuccess == false)
-            {
-                _logger.LogError("ConnectServerAsync failed");
-            }
-
-            OperateResult<ushort[]> result;
-            int count = 0;
-            do
-            {
-                result = await plc.ReadUInt16Async("W0", 15);
-            } while (result.IsSuccess == false && count++ < 3);
-
-            if (result.IsSuccess == false)
-            {
-                _logger.LogDebug("ReadMitsubishiPLC failed");
-                return;
-            }
-
-            UpdateRecord(MonitorTypeCode.SecondTemp, result.Content[0]);
-            UpdateRecord(MonitorTypeCode.BFTemp, result.Content[1]);
-            UpdateRecord(MonitorTypeCode.BFPressDiff, decimal.Divide(result.Content[2], 10m));
-            UpdateRecord(MonitorTypeCode.BFWeightMod, decimal.Divide(result.Content[3], 10m));
-            UpdateRecord(MonitorTypeCode.WashFlow, result.Content[4]);
-            UpdateRecord(MonitorTypeCode.PH, decimal.Divide(result.Content[5], 100));
-            UpdateRecord(MonitorTypeCode.BlowerSpeed, result.Content[7]);
-            UpdateRecord(MonitorTypeCode.OpTemp, result.Content[8]);
-            UpdateRecord(MonitorTypeCode.BurnerTemp, result.Content[9]);
-            UpdateRecord(MonitorTypeCode.BlowerSpeed1, result.Content[10]);
-            UpdateRecord(MonitorTypeCode.BlowerSpeed2, result.Content[11]);
-            UpdateRecord(MonitorTypeCode.BlowerSpeed3, result.Content[12]);
-            UpdateRecord(MonitorTypeCode.BlowerSpeed4, result.Content[13]);
-            UpdateRecord(MonitorTypeCode.EmExit, result.Content[14]);
-
-            OperateResult<ushort[]> result1;
-            count = 0;
-            do
-            {
-                result1 = await plc.ReadUInt16Async("W20", 1);
-            } while (result.IsSuccess == false && count++ < 3);
-
-            if (result1.IsSuccess == false)
-            {
-                _logger.LogDebug("ReadMitsubishiPLC failed");
-                return;
-            }
-
-            UpdateRecord(MonitorTypeCode.WashTowerPressDiff, decimal.Divide(result1.Content[0], 10));
-
-            OperateResult<uint[]> result2;
-            count = 0;
-            do
-            {
-                result2 = await plc.ReadUInt32Async("W010", 1);
-            } while (result2.IsSuccess == false && count++ < 3);
-
-            if (result2.IsSuccess == false)
-            {
-                _logger.LogDebug("ReadMitsubishiPLC failed");
-                return;
-            }
-
-            UpdateRecord(MonitorTypeCode.WaterQuantity, decimal.Divide(result2.Content[0], 100m));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "ReadMitsubishiPLC failed");
-        }
-        finally
-        {
-            await plc.ConnectCloseAsync();
-        }
-
-        return;
-
-        void UpdateRecord(MonitorTypeCode mtc, decimal value)
-        {
-            const int pipeId = 1;
-            const int deviceId = 100;
-
-            if (mtc == MonitorTypeCode.WaterQuantity)
-            {
-                if (_lastWaterQuantity == 0)
-                {
-                    _lastWaterQuantity = (int)value;
-                }
-            }
-
-            // sanity check            
-            if (mtc == MonitorTypeCode.WaterQuantity &&
-                Math.Abs(Convert.ToInt32(value) - _lastWaterQuantity) > 5157)
-                return;
-
-            if (mtc == MonitorTypeCode.WashTowerPressDiff && (value > 60 || value < 8))
-                return;
-
-            UpdatePipeMonitorTypeMap(pipeId, deviceId, mtc.ToString(),
-                new Record
-                {
-                    Value = value,
-                    Status = _monitorTypeIo.PipeMonitorTypeMap[pipeId][mtc.ToString()].OverrideState,
-                    Baf = 1
-                });
-        }
-    }
-
-    private void UploadAction(bool param1, TimeSpan interval, TimeSpan timeout, CancellationToken cancellationToken)
-    {
-        try
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            // Delay 2 minute to make sure all data is ready
-            var createDate = Helper.GetRoundedNow(interval).AddMinutes(-2);
-            _logger.LogDebug("GenerateUploadFile: {CreateDate}", createDate.ToString("yyyy-MM-dd HH:mm:ss"));
-            _ = GenerateUploadFile(createDate);
-        }
-        catch (OperationCanceledException)
-        {
-            // Ignore
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GenerateUploadFile failed");
-        }
-    }
-
+    
     public static decimal GetConvertedLoad(decimal load) => load / 2.5m * 15000;
 
     public async Task Recalculate(DateTime start, DateTime end, bool update, bool upload, bool reUpload,
@@ -556,10 +298,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
                         if (current.Minute == 0)
                             await _measuringAdjust.UpsertAdjustHour(pipeId, current);
                     }
-
-                if (!upload) continue;
-
-                _ = GenerateUploadFile(current);
+                
             }
 
             _logger.LogInformation("RecalculateAndUpload complete successfully");
@@ -669,9 +408,7 @@ public partial class DataCollectManager : IHostedService, IDisposable
             // Read Device Data
             _ = PeriodicAction(ReadPipesAction, false, TimeSpan.FromSeconds(3), TimeSpan.FromMilliseconds(2500),
                 "ReadPipesAction");
-            //_ = PeriodicAction(ReadPemsDevice, false, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(3),
-            //    "UploadAction");
-            _ = PeriodicAction(UploadAction, true, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(30), "UploadAction");
+            
             _logger.LogInformation("DataCollectManager is started");
             _ = _alarmIo.AddAlarm(AlarmIo.AlarmLevel.Info, "DAHS2 啟動");
         }

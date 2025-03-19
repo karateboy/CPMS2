@@ -77,7 +77,10 @@ public class PipeIo
 
         foreach (var pipe in SiteConfig.DefaultPipes)
         {
-            if (!PipeMap.TryAdd(pipe.Id, pipe)) continue;
+            if(PipeMap.ContainsKey(pipe.Id)) continue;
+            
+            Pipes.Add(pipe);
+            PipeMap.TryAdd(pipe.Id, pipe);
             await InsertPipe(pipe);
         }
     }

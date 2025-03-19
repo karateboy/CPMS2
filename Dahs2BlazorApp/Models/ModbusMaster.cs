@@ -476,15 +476,6 @@ public class ModbusMaster : IDisposable
         // Init recordMap with null value
         foreach (var measuring in _measuringIo.GetDeviceMeasuringList(deviceId: DeviceId))
         {
-            if (onlyOpFilter.HasValue)
-            {
-                if (onlyOpFilter.Value && measuring.Sid != MonitorTypeCode.G11.ToString())
-                    continue;
-
-                if (!onlyOpFilter.Value && measuring.Sid == MonitorTypeCode.G11.ToString())
-                    continue;
-            }
-
             recordMap[measuring] = null;
         }
 
@@ -495,15 +486,6 @@ public class ModbusMaster : IDisposable
             var device = _deviceIo.DeviceMap[DeviceId];
             foreach (var measuring in _measuringIo.GetDeviceMeasuringList(deviceId: DeviceId))
             {
-                if (onlyOpFilter.HasValue)
-                {
-                    if (onlyOpFilter.Value && measuring.Sid != MonitorTypeCode.G11.ToString())
-                        continue;
-
-                    if (!onlyOpFilter.Value && measuring.Sid == MonitorTypeCode.G11.ToString())
-                        continue;
-                }
-
 
                 try
                 {
@@ -605,17 +587,7 @@ public class ModbusMaster : IDisposable
                 var device = _deviceIo.DeviceMap[DeviceId];
                 var dataTypeDef =
                     DeviceMeasuringIo.DataTypeDefMap[(DeviceMeasuringIo.ModbusDataType)measuring.DataType];
-
-                if (onlyOpFilter.HasValue)
-                {
-                    if (onlyOpFilter.Value && measuring.Sid != MonitorTypeCode.G11.ToString())
-                        continue;
-
-                    if (!onlyOpFilter.Value && measuring.Sid == MonitorTypeCode.G11.ToString())
-                        continue;
-                }
-
-
+                
                 try
                 {
                     if (measuring.InputReg)

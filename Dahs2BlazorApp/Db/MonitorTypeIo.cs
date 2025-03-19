@@ -136,23 +136,31 @@ public class MonitorTypeIo
 
     public async Task Init()
     {
-        HashSet<PipeMonitorType> pipeMonitorTypeSet = new ();
+        Dictionary<PipeMonitorType, MonitorType> mtInDbMap = new ();
         IEnumerable<MonitorType> pipeMonitorTypes = await GetMonitorTypeAsync();
+        // 1. Add all Monitor Types to the set
         foreach(var pipeMt in pipeMonitorTypes)
         {
-            pipeMonitorTypeSet.Add(new PipeMonitorType(pipeMt.PipeId, pipeMt.Sid));
-            UpdatePipeMonitorTypeMap (pipeMt);
+            mtInDbMap.Add(new PipeMonitorType(pipeMt.PipeId, pipeMt.Sid), pipeMt);
         }
 
+        // 2. Add all missing Monitor Types to the database
         foreach (var pipeMtPair in SiteConfig.PipeMonitorTypes)
         {
             var pipeId = pipeMtPair.Key;
             var sequence = 1;
-            foreach (var mt in pipeMtPair.Value
-                         .Where(mt => !pipeMonitorTypeSet.Contains(new PipeMonitorType(pipeId, mt.Sid.ToString()))))
+            foreach (var mt in pipeMtPair.Value)
             {
+                var mtKey = new PipeMonitorType(pipeId, mt.Sid.ToString());
+                if (mtInDbMap.TryGetValue(mtKey, out var mtItem))
+                {
+                    UpdatePipeMonitorTypeMap(mtItem);
+                    mtInDbMap.Remove(mtKey);
+                    continue;
+                }
+                    
                 var typeInfo = SiteConfig.TypeCodeNameMap[mt.Sid];
-                var mtItem = new MonitorType
+                mtItem = new MonitorType
                 {
                     PipeId = pipeMtPair.Key,
                     Sid = mt.Sid.ToString(),                    
@@ -166,6 +174,12 @@ public class MonitorTypeIo
                 UpdatePipeMonitorTypeMap(mtItem);
                 await UpsertMonitorType(mtItem);
             }
+        }
+        // 3. Remove all Monitor Types that are not in the set
+        foreach (var mt in mtInDbMap.Values)
+        {
+            await using var connection = new SqlConnection(_sqlServer.ConnectionString);
+            await connection.ExecuteAsync("DELETE FROM MonitorType WHERE PipeId = @PipeId AND Sid = @Sid", mt);
         }
     }
 

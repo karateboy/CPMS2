@@ -316,7 +316,6 @@
             DataCollectManager.GetCurrentRawRecordMap(PipeId);
 
         List<string> monitorTypeWithoutOp = MonitorTypeIo.GetCemsMonitorTypeSids(PipeId)
-            .Where(sid => sid != MonitorTypeCode.G11.ToString())
             .ToList();
 
         var copyOfRawRecordMap = new Dictionary<string, Record>();
@@ -360,15 +359,6 @@
         var adjustedMap2 =
             MeasuringAdjust.Get1MinAdjustedDataFixWaterOnly(PipeId,
                 createDate, monitorTypeWithoutOp, rawTimeDataMap2, false);
-
-        if (MonitorTypeIo.GetCemsMonitorTypeSids(PipeId).Exists(sid => sid == MonitorTypeCode.G11.ToString()))
-        {
-            adjustedMap["G11"] =
-                MeasuringAdjust.GetAdjustRawOpRecord(PipeId, _pipeRawRecordMap["G11"]);
-
-            adjustedMap2["G11"] =
-                MeasuringAdjust.GetAdjustRawOpRecord(PipeId, _pipeRawRecordMap["G11"]);
-        }
 
         _pipeAdjustedRecordMap = adjustedMap;
 
