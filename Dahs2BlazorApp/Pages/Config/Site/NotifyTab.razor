@@ -6,22 +6,16 @@
 
 <PageTitle>@Title</PageTitle>
 
-<EditForm Model="@_model" OnValidSubmit="OnValidSubmit" class="w-75">
+<EditForm Model="@_model">
     <DataAnnotationsValidator/>
     <ValidationSummary/>
     <div class="row mb-4">
         <label class="col-md-2 col-form-label" for="Name">LINE Token</label>
         <div class="col-md-5">
-            <InputText Id="Name" class="form-control" @bind-Value="_model.LineToken"/>
+            <InputText Id="Name" readonly class="form-control" @bind-Value="_model.LineToken"/>
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-info" @onclick="TestLine">測試</button>
-        </div>
-    </div>
-
-    <div class="row mb-3">
-        <div class="offset-md-1">
-            <button type="submit" class="btn btn-success">更新</button>
         </div>
     </div>
 </EditForm>
@@ -41,20 +35,7 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        _model.LineToken = await SysConfigIo.GetLineToken();
-    }
-
-    private async Task OnValidSubmit()
-    {
-        Logger.LogInformation("Submit called: Processing the form");
-        await SysConfigIo.SetLineToken(_model.LineToken);
-
-        if (ToastObj != null)
-            await ToastObj.ShowAsync(new ToastModel
-            {
-                CssClass = "e-toast-success",
-                Content = "更新成功"
-            });
+        _model.LineToken = LineNotify.GetToken();
     }
 
     private async Task TestLine()
@@ -64,7 +45,7 @@
         {
             try
             {
-                await LineNotify.Notify(_model.LineToken, "發送測試訊息");
+                await LineNotify.Notify("發送測試訊息");
                 await ToastObj.ShowAsync(new ToastModel
                 {
                     CssClass = "e-toast-success",

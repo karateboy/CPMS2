@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json;
 using Dahs2BlazorApp.Db;
 
 namespace Dahs2BlazorApp.Models;
@@ -6,32 +7,38 @@ namespace Dahs2BlazorApp.Models;
 public interface ILineNotify
 {
     Task Notify(string message);
-    Task Notify(string token, string message);
+    string GetToken();
 }
 
 public class LineNotify : ILineNotify
 {
     private readonly ILogger<LineNotify> _logger;
     private readonly HttpClient _httpClient;
-    private readonly SysConfigIo _sysConfigIo;
 
-    public LineNotify(ILogger<LineNotify> logger, HttpClient httpClient, SysConfigIo sysConfigIo)
+    public class LineConfig
+    {
+        public string ChannelToken { get; set; } = string.Empty;
+        public string[] GroupIDs { get; set; } = Array.Empty<string>();
+    }
+
+    public readonly LineConfig Config = new();
+
+    public LineNotify(ILogger<LineNotify> logger, IConfiguration configuration, HttpClient httpClient)
     {
         _logger = logger;
         _httpClient = httpClient;
-        _sysConfigIo = sysConfigIo;
+        configuration.GetSection("Line").Bind(Config);
     }
 
-    public async Task Notify(string token, string message)
+    public async Task Notify(string message)
     {
         try
         {
-            var url = "https://notify-api.line.me/api/notify";
-            var content = new StringContent($"message={message}", Encoding.UTF8, "application/x-www-form-urlencoded");
-            _httpClient.DefaultRequestHeaders.Clear();
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-            var response = await _httpClient.PostAsync(url, content);
-            response.EnsureSuccessStatusCode();
+            await BroadcastLine(Config.ChannelToken, message);
+            foreach (var groupId in Config.GroupIDs)
+            {
+                await PushMessage(Config.ChannelToken, groupId, message);
+            }
         }
         catch (Exception e)
         {
@@ -40,9 +47,49 @@ public class LineNotify : ILineNotify
         }
     }
 
-    public async Task Notify(string message)
+    public string GetToken()
     {
-        var token = await _sysConfigIo.GetLineToken();
-        await Notify(token, message);
+        return Config.ChannelToken;
+    }
+    
+    public Task BroadcastLine(string token, string message)
+    {
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+        var content = new
+        {
+            messages = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = message
+                }
+            }
+        };
+
+        return _httpClient.PostAsync("https://api.line.me/v2/bot/message/broadcast",
+            new StringContent(JsonSerializer.Serialize(content), Encoding.UTF8, "application/json"));
+    }
+
+    public Task PushMessage(string token, string groupId, string message)
+    {
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+        var content = new
+        {
+            to = groupId,
+            messages = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = message
+                }
+            }
+        };
+
+        return _httpClient.PostAsync("https://api.line.me/v2/bot/message/push",
+            new StringContent(JsonSerializer.Serialize(content), Encoding.UTF8, "application/json"));
     }
 }
