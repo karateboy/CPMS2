@@ -1,6 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Data;
 using System.Diagnostics;
 using System.IO.Ports;
 using System.Net;
@@ -23,8 +24,11 @@ public class ModbusMaster : IDisposable
     private record ModbusTarget(string Address, int Port);
 
     private static readonly ConcurrentDictionary<ModbusTarget, SemaphoreSlim> TargetLockMap = new();
-    private DateTime? _lastConnectTime;
+    private static readonly ConcurrentDictionary<ModbusTarget, ModbusClient> ClientMap = new();
+    private static readonly ConcurrentDictionary<ModbusTarget, DateTime> LastConnectTimeMap = new();
+    
     private readonly SemaphoreSlim _targetLock;
+    private readonly ModbusTarget _modbusClientTarget;
     private TimeSpan Timeout { get; }
 
     public ModbusMaster(int deviceId,
@@ -41,34 +45,32 @@ public class ModbusMaster : IDisposable
         Timeout = timeout;
 
         var device = _deviceIo.DeviceMap[DeviceId];
-        var modbusTarget = GetModbusTarget(device);
-        TargetLockMap.TryGetValue(modbusTarget, out var targetLock);
-        _targetLock = targetLock ?? TargetLockMap.GetOrAdd(modbusTarget, new SemaphoreSlim(1, 1));
+        _modbusClientTarget = GetModbusTarget(device);
+        TargetLockMap.TryGetValue(_modbusClientTarget, out var targetLock);
+        _targetLock = targetLock ?? TargetLockMap.GetOrAdd(_modbusClientTarget, new SemaphoreSlim(1, 1));
     }
-
-    private ModbusClient? _client;
-
+    
     private ModbusClient EnsureClientConnected()
     {
-        var modbusTarget = GetModbusTarget(_deviceIo.DeviceMap[DeviceId]);
-        if (_client is not null)
+        if (ClientMap.TryGetValue(_modbusClientTarget, out var client))
         {
-            if (_client.IsConnected)
-                return _client;
+            if (client.IsConnected)
+                return client;
 
             DisposeClient();
         }
 
-        if (_lastConnectTime.HasValue && DateTime.Now - _lastConnectTime.Value < TimeSpan.FromSeconds(5))
+        if (LastConnectTimeMap.TryGetValue(_modbusClientTarget, out var lastConnectTime) &&
+            DateTime.Now - lastConnectTime < TimeSpan.FromSeconds(30))
         {
-            throw new Exception("Connect too frequently");
+            throw new ConstraintException("Connect too frequently");
         }
 
-        _lastConnectTime = DateTime.Now;
+        LastConnectTimeMap[_modbusClientTarget] = DateTime.Now;
 
         var device = _deviceIo.DeviceMap[DeviceId];
 
-        
+        ModbusClient _client;
         if (device.ModbusAddress.Contains("COM"))
         {
             _logger.Information("Modbus RTU Master Connect to {Port}", device.ModbusAddress);
@@ -102,14 +104,17 @@ public class ModbusMaster : IDisposable
                 device.BigEndian ? ModbusEndianness.BigEndian : ModbusEndianness.LittleEndian);
         }
 
+        ClientMap[_modbusClientTarget] = _client;
         return _client;
     }
 
     private void DisposeClient()
     {
+        if (!ClientMap.TryRemove(_modbusClientTarget, out var client)) return;
+        
         try
         {
-            switch (_client)
+            switch (client)
             {
                 case ModbusTcpClient tcpClient:
                     tcpClient.Dispose();
@@ -123,10 +128,6 @@ public class ModbusMaster : IDisposable
         {
             _logger.Error(ex, "Device {DeviceName} dispose client error",
                 _deviceIo.DeviceMap[DeviceId].Name);
-        }
-        finally
-        {
-            _client = null;
         }
     }
 
@@ -308,20 +309,17 @@ public class ModbusMaster : IDisposable
         return recordList;
     }
 
-    private decimal ReadInputReg(IDevice device, IDeviceMeasuring measuring)
+    private decimal ReadInputReg(ModbusClient client, IDevice device, IDeviceMeasuring measuring)
     {
         var dataTypeDef =
             DeviceMeasuringIo.DataTypeDefMap[(DeviceMeasuringIo.ModbusDataType)measuring.DataType];
-
-        if (_client is null)
-            throw new Exception("Client is null");
-
+        
         switch (dataTypeDef.Type)
         {
             case DeviceMeasuringIo.ModbusDataType.Double:
                 if (measuring.MidEndian == false)
                 {
-                    var doubleMemory = _client.ReadInputRegisters<double>(
+                    var doubleMemory = client.ReadInputRegisters<double>(
                         (byte)device.SlaveId,
                         (ushort)measuring.Address, 1);
                     return
@@ -329,7 +327,7 @@ public class ModbusMaster : IDisposable
                             MidpointRounding.AwayFromZero));
                 }
 
-                var shortDoubleMemory = _client.ReadInputRegisters<short>(
+                var shortDoubleMemory = client.ReadInputRegisters<short>(
                     (byte)device.SlaveId,
                     (ushort)measuring.Address, 4);
                 return
@@ -339,13 +337,13 @@ public class ModbusMaster : IDisposable
             case DeviceMeasuringIo.ModbusDataType.Float:
                 if (measuring.MidEndian == false)
                 {
-                    var floatMemory = _client.ReadInputRegisters<float>((byte)device.SlaveId,
+                    var floatMemory = client.ReadInputRegisters<float>((byte)device.SlaveId,
                         (ushort)measuring.Address, 1);
                     return
                         new decimal(Math.Round(floatMemory[0], 2, MidpointRounding.AwayFromZero));
                 }
 
-                var shortFloatMemory = _client.ReadInputRegisters<short>(
+                var shortFloatMemory = client.ReadInputRegisters<short>(
                     (byte)device.SlaveId,
                     (ushort)measuring.Address, 2);
 
@@ -354,7 +352,7 @@ public class ModbusMaster : IDisposable
                         2, MidpointRounding.AwayFromZero));
 
             case DeviceMeasuringIo.ModbusDataType.Int16:
-                var int16Memory = _client.ReadInputRegisters<short>((byte)device.SlaveId,
+                var int16Memory = client.ReadInputRegisters<short>((byte)device.SlaveId,
                     (ushort)measuring.Address, 1);
 
                 return measuring.MidEndian
@@ -362,7 +360,7 @@ public class ModbusMaster : IDisposable
                     : new decimal(int16Memory[0]);
 
             case DeviceMeasuringIo.ModbusDataType.Uint16:
-                var uint16Memory = _client.ReadInputRegisters<ushort>((byte)device.SlaveId,
+                var uint16Memory = client.ReadInputRegisters<ushort>((byte)device.SlaveId,
                     (ushort)measuring.Address, 1);
 
                 return measuring.MidEndian
@@ -372,12 +370,12 @@ public class ModbusMaster : IDisposable
             case DeviceMeasuringIo.ModbusDataType.Int32:
                 if (measuring.MidEndian == false)
                 {
-                    var int32Memory = _client.ReadInputRegisters<int>((byte)device.SlaveId,
+                    var int32Memory = client.ReadInputRegisters<int>((byte)device.SlaveId,
                         (ushort)measuring.Address, 1);
                     return new decimal(int32Memory[0]);
                 }
 
-                var shortIntMemory = _client.ReadInputRegisters<short>(
+                var shortIntMemory = client.ReadInputRegisters<short>(
                     (byte)device.SlaveId,
                     (ushort)measuring.Address, 2);
                 return
@@ -388,20 +386,17 @@ public class ModbusMaster : IDisposable
         }
     }
 
-    private decimal ReadHoldingReg(IDevice device, IDeviceMeasuring measuring)
+    private decimal ReadHoldingReg(ModbusClient client, IDevice device, IDeviceMeasuring measuring)
     {
         var dataTypeDef =
             DeviceMeasuringIo.DataTypeDefMap[(DeviceMeasuringIo.ModbusDataType)measuring.DataType];
-
-        if (_client is null)
-            throw new Exception("Client is null");
-
+        
         switch (dataTypeDef.Type)
         {
             case DeviceMeasuringIo.ModbusDataType.Double:
                 if (measuring.MidEndian == false)
                 {
-                    var doubleMemory = _client.ReadHoldingRegisters<double>(
+                    var doubleMemory = client.ReadHoldingRegisters<double>(
                         (byte)device.SlaveId,
                         (ushort)measuring.Address, 1);
                     return
@@ -409,7 +404,7 @@ public class ModbusMaster : IDisposable
                             MidpointRounding.AwayFromZero));
                 }
 
-                var shortDoubleMemory = _client.ReadHoldingRegisters<short>(
+                var shortDoubleMemory = client.ReadHoldingRegisters<short>(
                     (byte)device.SlaveId,
                     (ushort)measuring.Address, 4);
                 return
@@ -419,7 +414,7 @@ public class ModbusMaster : IDisposable
             case DeviceMeasuringIo.ModbusDataType.Float:
                 if (measuring.MidEndian == false)
                 {
-                    var floatMemory = _client.ReadHoldingRegisters<float>(
+                    var floatMemory = client.ReadHoldingRegisters<float>(
                         (byte)device.SlaveId,
                         (ushort)measuring.Address, 1);
                     return
@@ -427,7 +422,7 @@ public class ModbusMaster : IDisposable
                             MidpointRounding.AwayFromZero));
                 }
 
-                var shortFloatMemory = _client.ReadHoldingRegisters<short>(
+                var shortFloatMemory = client.ReadHoldingRegisters<short>(
                     (byte)device.SlaveId,
                     (ushort)measuring.Address, 2);
                 return
@@ -436,14 +431,14 @@ public class ModbusMaster : IDisposable
 
 
             case DeviceMeasuringIo.ModbusDataType.Int16:
-                var int16Memory = _client.ReadHoldingRegisters<short>((byte)device.SlaveId,
+                var int16Memory = client.ReadHoldingRegisters<short>((byte)device.SlaveId,
                     (ushort)measuring.Address, 1);
                 return measuring.MidEndian
                     ? new decimal(BinaryPrimitives.ReverseEndianness(int16Memory[0]))
                     : new decimal(int16Memory[0]);
 
             case DeviceMeasuringIo.ModbusDataType.Uint16:
-                var uint16Memory = _client.ReadHoldingRegisters<ushort>((byte)device.SlaveId,
+                var uint16Memory = client.ReadHoldingRegisters<ushort>((byte)device.SlaveId,
                     (ushort)measuring.Address, 1);
                 return measuring.MidEndian
                     ? new decimal(BinaryPrimitives.ReverseEndianness(uint16Memory[0]))
@@ -452,12 +447,12 @@ public class ModbusMaster : IDisposable
             case DeviceMeasuringIo.ModbusDataType.Int32:
                 if (measuring.MidEndian == false)
                 {
-                    var int32Memory = _client.ReadHoldingRegisters<int>((byte)device.SlaveId,
+                    var int32Memory = client.ReadHoldingRegisters<int>((byte)device.SlaveId,
                         (ushort)measuring.Address, 1);
                     return new decimal(int32Memory[0]);
                 }
 
-                var shortIntMemory = _client.ReadHoldingRegisters<short>(
+                var shortIntMemory = client.ReadHoldingRegisters<short>(
                     (byte)device.SlaveId,
                     (ushort)measuring.Address, 2);
                 return
@@ -509,11 +504,11 @@ public class ModbusMaster : IDisposable
                 {
                     if (measuring.InputReg)
                     {
-                        recordMap[measuring] = ReadInputReg(device, measuring);
+                        recordMap[measuring] = ReadInputReg(client, device, measuring);
                     }
                     else
                     {
-                        recordMap[measuring] = ReadHoldingReg(device, measuring);
+                        recordMap[measuring] = ReadHoldingReg(client, device, measuring);
                     }
                 }
                 catch (Exception)
