@@ -339,6 +339,7 @@ public class ModbusMaster : IDisposable
                 {
                     var floatMemory = client.ReadInputRegisters<float>((byte)device.SlaveId,
                         (ushort)measuring.Address, 1);
+                    
                     return
                         new decimal(Math.Round(floatMemory[0], 2, MidpointRounding.AwayFromZero));
                 }
@@ -347,6 +348,13 @@ public class ModbusMaster : IDisposable
                     (byte)device.SlaveId,
                     (ushort)measuring.Address, 2);
 
+                if (measuring.Sid == nameof(MonitorTypeCode.WaterQuantity))
+                {
+                    return
+                        new decimal(Math.Round(shortFloatMemory.GetBigEndian<float>(0),
+                            2, MidpointRounding.AwayFromZero));
+                }
+                
                 return
                     new decimal(Math.Round(shortFloatMemory.GetMidLittleEndian<float>(0),
                         2, MidpointRounding.AwayFromZero));
