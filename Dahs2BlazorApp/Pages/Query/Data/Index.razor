@@ -8,6 +8,7 @@
 @inject PipeIo MyPipeIo
 @inject MonitorTypeIo MonitorTypeIo
 @inject RecordIo RecordIo
+@inject MeasuringAdjust MeasuringAdjust
 @inject ILogger<Index> Logger
 
 <PageTitle>@Title</PageTitle>
@@ -211,12 +212,19 @@
     async Task OnValidSubmit()
     {
         Logger.LogDebug("start={Start} end={End}", _model.Start, _model.End);
-        var recordTimeMap = await RecordIo.GetData(_model.TableType,
-            _model.PipeId,
-            _model.MonitorTypes.ToList(),
-            _model.Start!.Value,
-            _model.End!.Value);
-
+        Dictionary<DateTime,Dictionary<string,Record>> recordTimeMap;
+            
+            if(_model.TableType != TableType.AdjustedData5) 
+                recordTimeMap = await RecordIo.GetData(_model.TableType,
+                _model.PipeId,
+                _model.MonitorTypes.ToList(),
+                _model.Start!.Value,
+                _model.End!.Value);
+            else
+                recordTimeMap = await MeasuringAdjust.Get5MinData(_model.PipeId,
+                    _model.Start!.Value,
+                    _model.End!.Value);
+            
         DisplayReport = true;
         var recordTimes = recordTimeMap.Keys.ToList();
         recordTimes.Sort();
@@ -268,6 +276,7 @@
         {
             case TableType.RawData:
             case TableType.AdjustedData:
+            case TableType.AdjustedData5:    
             case TableType.AdjustedData60:
                 MonitorTypes = MonitorTypeIo.GetMonitorTypes(_model.PipeId).ToList();
                 break;

@@ -26,7 +26,8 @@ public class RecordIo
     public Dictionary<TableType, string> TableTypeNameMap = new()
     {
         { TableType.RawData, "原始資料" },
-        { TableType.AdjustedData, "一分鐘修正值" },
+        { TableType.AdjustedData, "1分鐘修正值" },
+        { TableType.AdjustedData5, "5分鐘修正值" },
         { TableType.AdjustedData60, "小時修正值" },
     };
 
@@ -294,5 +295,6 @@ public enum TableType
 {
     RawData,
     AdjustedData,
+    AdjustedData5,
     AdjustedData60
 }

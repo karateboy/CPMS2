@@ -92,7 +92,7 @@ builder.Services.AddSingleton<ExcelUtility>();
 builder.Services.AddHostedService<BootTask>();
 builder.Services.AddHostedService<DataCollectManager>(p => p.GetRequiredService<DataCollectManager>());
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-var cultureStrings = new[] { "en-US", "zh-hant", "zh-hans" };
+var cultureStrings = new[] { "en-US", "zh-tw", "zh-cn" };
 var localizationOptions = new RequestLocalizationOptions()
     .SetDefaultCulture(cultureStrings[1])
     .AddSupportedCultures(cultureStrings)
@@ -100,7 +100,7 @@ var localizationOptions = new RequestLocalizationOptions()
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
     var supportedCultures = cultureStrings.Select(x => new CultureInfo(x)).ToList();
-    options.DefaultRequestCulture = new RequestCulture("zh-hant");
+    options.DefaultRequestCulture = new RequestCulture("zh-tw");
     options.SupportedCultures = supportedCultures;
     options.SupportedUICultures = supportedCultures;
 });

@@ -322,27 +322,39 @@ public class MeasuringAdjust
 
             result.Add("E36", e36Record);
             var typeDef = SiteConfig.PipeMonitorTypeMap[pipeId]["E36"];
-
-
-            pipe.LastNormalOzone = e36Record.Value.GetValueOrDefault(0);
-            pipe.NormalOzoneTime = start;
-
-            decimal rawO2 = e36Record.Value.GetValueOrDefault(0);
-            decimal dO2 = typeDef.CheckRange(rawO2);
-            (e36Record.Value, ozoneFactor, _) =
-                Helper.GetFixOzone(
-                    typeDef.AdjustFactor.Water, dO2,
-                    dWater.GetValueOrDefault(0),
-                    pipe.BaseO2,
-                    100,
-                    e36Record.Baf.GetValueOrDefault(1m)); // 氧氣-修水
-
-            // status - 監測數據紀錄值是否超過排放標準
-            item.CheckOverStatus(e36Record);
-            if (updatePipe)
+            
+            if (e36Record.Status.EndsWith("10") || e36Record.Status.EndsWith("11"))
             {
                 pipe.LastNormalOzone = e36Record.Value.GetValueOrDefault(0);
                 pipe.NormalOzoneTime = start;
+
+                decimal rawO2 = e36Record.Value.GetValueOrDefault(0);
+                decimal dO2 = typeDef.CheckRange(rawO2);
+                (e36Record.Value, ozoneFactor, _) =
+                    Helper.GetFixOzone(
+                        typeDef.AdjustFactor.Water, dO2,
+                        dWater.GetValueOrDefault(0),
+                        pipe.BaseO2,
+                        100,
+                        e36Record.Baf.GetValueOrDefault(1m)); // 氧氣-修水
+
+                // status - 監測數據紀錄值是否超過排放標準
+                item.CheckOverStatus(e36Record);
+                if (updatePipe)
+                {
+                    pipe.LastNormalOzone = e36Record.Value.GetValueOrDefault(0);
+                    pipe.NormalOzoneTime = start;
+                }
+            }
+            else
+            {
+                (_, ozoneFactor, _) =
+                    Helper.GetFixOzone(
+                        true, pipe.LastNormalOzone,
+                        dWater.GetValueOrDefault(0),
+                        pipe.BaseO2,
+                        100,
+                        1); // 氧氣-修水    
             }
         }
         else
@@ -362,12 +374,9 @@ public class MeasuringAdjust
             var typeDef = SiteConfig.PipeMonitorTypeMap[pipeId]["T59"];
             result.Add("T59", t59Record);
 
-            // 判斷數位 / 類比，如為數位，不需要限制最大範圍
-            t59Record.Value = typeDef.CheckRange(t59Record.Value.GetValueOrDefault(0));
-            if (updatePipe)
+            if (t59Record.Value.HasValue)
             {
-                pipe.LastNormalTemp = t59Record.Value.GetValueOrDefault(100);
-                pipe.NormalTempTime = start;
+                t59Record.Value = typeDef.CheckRange(t59Record.Value.GetValueOrDefault(0));
             }
 
             item.CheckOverStatus(t59Record);
@@ -380,10 +389,13 @@ public class MeasuringAdjust
             var typeDef = SiteConfig.PipeMonitorTypeMap[pipeId]["F48"];
             result.Add("F48", record);
 
-            decimal dF48 = typeDef.CheckRange(record.Value.GetValueOrDefault(0));
+            if (record.Value.HasValue)
+            {
+                decimal dF48 = typeDef.CheckRange(record.Value.GetValueOrDefault(0));
 
-            record.Value = dF48 * pipe.Area * 60;
-            item.CheckOverStatus(record);
+                record.Value = dF48 * pipe.Area * 60;
+                item.CheckOverStatus(record);    
+            }
         }
 
 
