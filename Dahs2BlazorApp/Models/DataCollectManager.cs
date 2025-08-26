@@ -338,7 +338,6 @@ public partial class DataCollectManager : IHostedService, IDisposable
         {
             return mt switch
             {
-                "F48" => record.Value.HasValue ? (record.Value.Value * 5).ToString("F2") : "",
                 _ => record.Value.HasValue ? record.Value.Value.ToString("F2") : ""
             };
         }
@@ -347,7 +346,6 @@ public partial class DataCollectManager : IHostedService, IDisposable
         {
             return mt switch
             {
-                "F48" => record.Value.HasValue ? (record.Value.Value * 60).ToString("F2") : "",
                 _ => record.Value.HasValue ? record.Value.Value.ToString("F2") : ""
             };
         }
