@@ -116,7 +116,7 @@ public static class SiteConfig
         new()
         {
             Id = 1, Name = "P001", EpaCode = "P001", Area = 0.74m, BaseO2 = 11m, LightDiameter = 1.3m,
-            EmissionDiameter = 1.3m, LastNormalOzone = 20m, NormalOzoneTime = DateTime.Now,
+            EmissionDiameter = 1.3m, LastNormalOzone = 11m, NormalOzoneTime = DateTime.Now,
             LastNormalTemp = 100m, NormalTempTime = DateTime.Now, UpperSource = ""
         },
     };

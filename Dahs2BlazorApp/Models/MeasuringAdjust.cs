@@ -322,11 +322,12 @@ public class MeasuringAdjust
 
             result.Add("E36", e36Record);
             var typeDef = SiteConfig.PipeMonitorTypeMap[pipeId]["E36"];
-            
+
+            pipe.LastNormalOzone = e36Record.Value.GetValueOrDefault(0);
+            pipe.NormalOzoneTime = start;
+
             if (e36Record.Status.EndsWith("10") || e36Record.Status.EndsWith("11"))
             {
-                pipe.LastNormalOzone = e36Record.Value.GetValueOrDefault(0);
-                pipe.NormalOzoneTime = start;
 
                 decimal rawO2 = e36Record.Value.GetValueOrDefault(0);
                 decimal dO2 = typeDef.CheckRange(rawO2);
